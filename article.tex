@@ -30,6 +30,8 @@
 % the typewriter font.
 \usepackage{inconsolata}
 
+% For including images
+\usepackage{graphicx}
 
 % If the title and author information does not fit in the area allocated, uncomment the following
 %
@@ -74,9 +76,9 @@ The advent of Large Language Models (LLMs) has revolutionized Natural Language P
 
 \section{Introduction}
 
-The advent of Large Language Models (LLMs) such as GPT-4 and Llama 3 has marked a paradigm shift in Natural Language Processing, enabling conversational agents that can generate remarkably fluent and coherent responses to a wide array of queries \cite{Brown2020GPT3}. While these models have demonstrated impressive general-purpose capabilities, their application in high-stakes, specialized domains remains fraught with challenges. One such domain is religious question answering, particularly for the global Persian-speaking Muslim community of over 100 million individuals. In this context, questions are not merely informational; they often pertain to core beliefs and practices, where an inaccurate or unsubstantiated answer can lead to significant misinformation and erode user trust.
+The advent of Large Language Models (LLMs) such as GPT-4 and Llama 3 has marked a paradigm shift in Natural Language Processing, enabling conversational agents that can generate remarkably fluent and coherent responses to a wide array of queries \cite{brown2020gpt3}. While these models have demonstrated impressive general-purpose capabilities, their application in high-stakes, specialized domains remains fraught with challenges. One such domain is religious question answering, particularly for the global Persian-speaking Muslim community of over 100 million individuals. In this context, questions are not merely informational; they often pertain to core beliefs and practices, where an inaccurate or unsubstantiated answer can lead to significant misinformation and erode user trust.
 
-A primary obstacle is the propensity of general-purpose LLMs for \textbf{hallucination}---generating plausible yet factually incorrect information. \cite{Ji2023SurveyOfHallucination} This issue is exacerbated in niche domains where authoritative knowledge is not well-represented in their broad training corpora. To mitigate this, Retrieval-Augmented Generation (RAG) \cite{Lewis2020RAG} has become a standard for grounding LLM outputs in external knowledge. However, the majority of existing RAG implementations follow a simplistic, single-pass ``retrieve-and-read'' pipeline \cite{Gao2023RAGSurvey, Ram2023InContextRALM}. This approach often proves insufficient for complex queries requiring multi-step reasoning and evidence aggregation, similar to those found in benchmarks like HotpotQA \cite{Yang2018HotpotQA}, and can fail to retrieve a comprehensive set of evidence, leading to superficial or unfaithful answers.
+A primary obstacle is the propensity of general-purpose LLMs for \textbf{hallucination}---generating plausible yet factually incorrect information. \cite{ji2023survey} This issue is exacerbated in niche domains where authoritative knowledge is not well-represented in their broad training corpora. To mitigate this, Retrieval-Augmented Generation (RAG) \cite{lewis2020retrieval} has become a standard for grounding LLM outputs in external knowledge. However, the majority of existing RAG implementations follow a simplistic, single-pass ``retrieve-and-read'' pipeline \cite{gao2023retrieval, ram2023incontext}. This approach often proves insufficient for complex queries requiring multi-step reasoning and evidence aggregation, similar to those found in benchmarks like HotpotQA \cite{yang2018hotpotqa}, and can fail to retrieve a comprehensive set of evidence, leading to superficial or unfaithful answers.
 
 To address these critical shortcomings, we introduce \textbf{FARSIQA}: \textbf{F}aithful \& \textbf{A}dvanced \textbf{R}AG \textbf{S}ystem for \textbf{I}slamic \textbf{Q}uestion \textbf{A}nswering, built upon a novel architecture we term \textbf{FAIR-RAG}: \textbf{F}aithful \textbf{A}daptive \textbf{I}terative \textbf{R}efinement for \textbf{R}etrieval-\textbf{A}ugmented \textbf{G}eneration. The core innovation of FAIR-RAG is its dynamic and self-correcting nature. Unlike conventional RAG systems, it employs a multi-step process that adaptively decomposes complex queries and critically assesses the sufficiency of the retrieved evidence. If the evidence is deemed incomplete, the system enters an iterative loop, generating new, targeted sub-queries to fill information gaps and progressively build a comprehensive context. Only when the evidence is sufficient does it proceed to generate a final response that is faithfully grounded in the verified sources.
 
@@ -86,7 +88,7 @@ The main contributions of this work are four-fold:
     \item We introduce \textbf{FARSIQA}, a novel, end-to-end QA system for Persian Islamic texts that significantly improves response \textbf{faithfulness} and reliability in a high-stakes and low-resource domain.
     \item We propose and implement the \textbf{FAIR-RAG} framework, an advanced RAG architecture that moves beyond single-pass retrieval by incorporating iterative evidence gathering and refinement to robustly handle complex questions.
     \item We construct a comprehensive knowledge base containing over one million documents from authoritative Islamic sources and develop a fine-tuned Persian embedding model that shows improved domain-specific retrieval performance.
-    \item We conduct a rigorous, multi-faceted evaluation using the challenging IslamicPCQA benchmark \cite{IslamicPCQA_placeholder}, demonstrating that FARSIQA achieves a ``\textbf{Answer Correctness}'' score of \textbf{74.3\%} (as evaluated via LLM-as-Judge on multi-hop queries) and substantially outperforms standard baselines across metrics of relevance, correctness, and robustness.
+    \item We conduct a rigorous, multi-faceted evaluation using the challenging IslamicPCQA benchmark \cite{11075543}, demonstrating that FARSIQA achieves a ``\textbf{Answer Correctness}'' score of \textbf{74.3\%} (as evaluated via LLM-as-Judge on multi-hop queries) and substantially outperforms standard baselines across metrics of relevance, correctness, and robustness.
 \end{itemize}
 
 The remainder of this paper is organized as follows: Section 2 reviews related work. Section 3 details the architecture of FARSIQA. Section 4 describes our experimental setup, followed by results and analysis in Section 5. Finally, Section 6 concludes the paper.
@@ -97,23 +99,23 @@ Our research is situated at the intersection of open-domain question answering, 
 
 \subsection{Open-Domain Question Answering}
 
-Traditional open-domain QA systems have long been structured around a multi-stage pipeline, typically comprising \textbf{question analysis}, \textbf{document retrieval}, and \textbf{answer extraction/reading} \cite{Jurafsky2023SpeechNLP}. Early systems relied on sparse retrieval methods like TF-IDF, followed by heuristic-based or machine learning models for answer extraction. The advent of deep learning led to significant improvements, particularly with the ``Retriever-Reader'' architecture. \cite{Chen2018ReadingWikipedia} Systems like DrQA \cite{Chen2017DrQA} pioneered this approach by combining a document retriever with a neural network-based reader to identify answer spans within retrieved passages.
+Traditional open-domain QA systems have long been structured around a multi-stage pipeline, typically comprising \textbf{question analysis}, \textbf{document retrieval}, and \textbf{answer extraction/reading} \cite{jurafsky2023speech}. Early systems relied on sparse retrieval methods like TF-IDF, followed by heuristic-based or machine learning models for answer extraction. The advent of deep learning led to significant improvements, particularly with the ``Retriever-Reader'' architecture. \cite{chen2017reading} Systems like DrQA \cite{chen2017reading} pioneered this approach by combining a document retriever with a neural network-based reader to identify answer spans within retrieved passages.
 
-This paradigm was further refined with the introduction of dense retrieval methods. Dense Passage Retriever (DPR) \cite{Karpukhin2020DPR} demonstrated the power of using dual-encoder Transformer models to embed questions and passages into a shared vector space, enabling more semantically robust retrieval. While these models set new benchmarks, their performance was fundamentally tied to the quality of the reader component, which was often limited to extracting existing text spans and struggled with questions requiring synthesis or abstractive reasoning. The emergence of LLMs offered a powerful new mechanism for the ``reader'' component, leading to the development of Retrieval-Augmented Generation.
+This paradigm was further refined with the introduction of dense retrieval methods. Dense Passage Retriever (DPR) \cite{karpukhin2020dense} demonstrated the power of using dual-encoder Transformer models to embed questions and passages into a shared vector space, enabling more semantically robust retrieval. While these models set new benchmarks, their performance was fundamentally tied to the quality of the reader component, which was often limited to extracting existing text spans and struggled with questions requiring synthesis or abstractive reasoning. The emergence of LLMs offered a powerful new mechanism for the ``reader'' component, leading to the development of Retrieval-Augmented Generation.
 
 \subsection{The Evolution of Retrieval-Augmented Generation (RAG)}
 
-RAG \cite{Lewis2020RAG} was a seminal work that formally combined a pre-trained retriever with a sequence-to-sequence generator. By conditioning the generation process on retrieved documents, RAG systems can produce answers that are grounded in external knowledge, \cite{Komeili2022InternetAugmented} thereby mitigating factual inaccuracies (hallucinations) and incorporating information beyond the model's training data. This approach offers significant advantages over fine-tuning an LLM, including easier knowledge updates and greater transparency, as the sources for each answer can be traced \cite{Gao2023RAGSurvey}.
+RAG \cite{lewis2020retrieval} was a seminal work that formally combined a pre-trained retriever with a sequence-to-sequence generator. By conditioning the generation process on retrieved documents, RAG systems can produce answers that are grounded in external knowledge, \cite{komeili2022internet} thereby mitigating factual inaccuracies (hallucinations) and incorporating information beyond the model's training data. This approach offers significant advantages over fine-tuning an LLM, including easier knowledge updates and greater transparency, as the sources for each answer can be traced \cite{gao2023retrieval}.
 
-However, the initial ``naive'' RAG pipeline---a single-pass retrieval followed by generation---has known limitations. Its effectiveness is highly dependent on the initial retrieval quality; if relevant documents are missed, the generator has no recourse. Recognizing this, recent research has focused on \textbf{Advanced RAG} techniques \cite{Gao2023RAGSurvey, Asai2023SelfRAGSurvey}. These methods enhance the pipeline with more sophisticated, often iterative, mechanisms. For instance, approaches like Self-RAG \cite{Asai2023SelfRAG} introduce reflection tokens that allow the LLM to decide for itself whether retrieval is necessary and to evaluate the quality of retrieved passages. Other works have focused on \textbf{query rewriting} and \textbf{decomposition}, where complex questions are broken down into simpler, answerable sub-questions before retrieval \cite{Jiang2023QueryRewriting}. Recent extensions, such as FLARE \cite{Jiang2023FLARE} and ReAct \cite{Yao2022ReAct}, incorporate iterative prompting and tool-use, but FAIR-RAG distinguishes itself by emphasizing Structured Evidence Assessment (SEA) over pure query refinement.
+However, the initial ``naive'' RAG pipeline---a single-pass retrieval followed by generation---has known limitations. Its effectiveness is highly dependent on the initial retrieval quality; if relevant documents are missed, the generator has no recourse. Recognizing this, recent research has focused on \textbf{Advanced RAG} techniques \cite{gao2023retrieval, asai2023self}. These methods enhance the pipeline with more sophisticated, often iterative, mechanisms. For instance, approaches like Self-RAG \cite{asai2023self} introduce reflection tokens that allow the LLM to decide for itself whether retrieval is necessary and to evaluate the quality of retrieved passages. Other works have focused on \textbf{query rewriting} and \textbf{decomposition}, where complex questions are broken down into simpler, answerable sub-questions before retrieval \cite{jiang2023query}. Recent extensions, such as FLARE \cite{jiang2023flare} and ReAct \cite{yao2022react}, incorporate iterative prompting and tool-use, but FAIR-RAG distinguishes itself by emphasizing Structured Evidence Assessment (SEA) over pure query refinement.
 
-Our \textbf{FAIR-RAG} framework contributes directly to this line of research. It implements an explicit iterative and adaptive loop that focuses on assessing \textbf{evidence sufficiency}. Unlike models that only refine queries, FAIR-RAG iteratively expands its evidence pool and only terminates when it judges the collected context to be comprehensive enough, making it particularly well-suited for complex questions that require synthesizing information from multiple pieces of evidence.\cite{FAIR-RAG}
+Our \textbf{FAIR-RAG} framework contributes directly to this line of research. It implements an explicit iterative and adaptive loop that focuses on assessing \textbf{evidence sufficiency}. Unlike models that only refine queries, FAIR-RAG iteratively expands its evidence pool and only terminates when it judges the collected context to be comprehensive enough, making it particularly well-suited for complex questions that require synthesizing information from multiple pieces of evidence.\cite{fairrag}
 
 \subsection{QA for Persian and Specialized Islamic Domain}
 
-While QA research has flourished for English, Persian remains a relatively low-resource language. \cite{Fani2021SurveyPersianNLP} Early efforts were often limited by the lack of large-scale, high-quality datasets. Recent projects have made significant strides in this area. For example, PerAnSel \cite{PerAnSel2022} focused on the task of answer selection, introducing a model optimized for Persian sentence structure. More relevant to our work is IslamicPCQA \cite{IslamicPCQA_placeholder}, which introduced the first multi-hop, complex QA dataset for the Persian Islamic domain, inspired by HotpotQA. \cite{Yang2018HotpotQA} While the authors provided a strong baseline model, their work highlighted the need for more advanced architectures capable of reasoning over multiple documents.
+While QA research has flourished for English, Persian remains a relatively low-resource language. \cite{fani2021survey} Early efforts were often limited by the lack of large-scale, high-quality datasets. Recent projects have made significant strides in this area. For example, PerAnSel \cite{peransel2022} focused on the task of answer selection, introducing a model optimized for Persian sentence structure. More relevant to our work is IslamicPCQA \cite{11075543}, which introduced the first multi-hop, complex QA dataset for the Persian Islamic domain, inspired by HotpotQA. \cite{yang2018hotpotqa} While the authors provided a strong baseline model, their work highlighted the need for more advanced architectures capable of reasoning over multiple documents.
 
-To our knowledge, there is a scarcity of end-to-end generative QA systems for the Islamic domain, especially in Persian. One notable related work is MufassirQAS \cite{MufassirQAS_placeholder}, an Arabic QA system that uses RAG to answer Quranic questions. While it addresses the same sensitive domain, the published work does not provide a detailed quantitative evaluation or explore advanced iterative architectures like ours. FARSIQA addresses a clear gap by being the first system to combine an advanced, iterative RAG framework with a comprehensive, curated knowledge base to tackle the unique challenges of the Persian Islamic domain, providing a robust and rigorously evaluated solution.
+To our knowledge, there is a scarcity of end-to-end generative QA systems for the Islamic domain, especially in Persian. One notable related work is MufassirQAS \cite{alan2025ragbasedquestionansweringproposal}, an Arabic QA system that uses RAG to answer Quranic questions. While it addresses the same sensitive domain, the published work does not provide a detailed quantitative evaluation or explore advanced iterative architectures like ours. FARSIQA addresses a clear gap by being the first system to combine an advanced, iterative RAG framework with a comprehensive, curated knowledge base to tackle the unique challenges of the Persian Islamic domain, providing a robust and rigorously evaluated solution.
 
 \section{Data Resources}
 
@@ -121,7 +123,7 @@ A robust and reliable question-answering system is fundamentally dependent on th
 
 \subsection{Knowledge Base Construction}
 
-The primary goal of our knowledge base is to provide a comprehensive, reliable, and well-structured source of information for the retrieval component of our RAG pipeline. Drawing inspiration from successful open-domain QA systems that often leverage encyclopedic sources like Wikipedia \cite{Chen2017DrQA} for their concise and factual structure, we curated our knowledge base from two main types of high-quality Persian Islamic content.
+The primary goal of our knowledge base is to provide a comprehensive, reliable, and well-structured source of information for the retrieval component of our RAG pipeline. Drawing inspiration from successful open-domain QA systems that often leverage encyclopedic sources like Wikipedia \cite{chen2017reading} for their concise and factual structure, we curated our knowledge base from two main types of high-quality Persian Islamic content.
 
 \subsubsection{Data Sources}
 
@@ -145,7 +147,7 @@ To prepare the raw text for efficient retrieval, we implemented a systematic pre
     \item For the Q\&A data, the expert's answer was similarly chunked. To preserve the crucial link between the question and its corresponding answer, the original user question was prepended to each answer chunk. We used special markers to clearly delineate the two parts for the downstream LLM: ``User Question'' and ``Expert Answer''.
 \end{itemize}
 
-All text segments were processed to a maximum length of \textbf{378 tokens}, empirically chosen to balance retrieval efficiency and context completeness based on ParsBERT's architecture. \cite{Farahani2020ParsBERT} This chunking accounts for Persian morphological complexities, ensuring semantic integrity. This process yielded a final knowledge base of approximately \textbf{1.7 million text chunks}, each representing a searchable unit of information.
+All text segments were processed to a maximum length of \textbf{378 tokens}, empirically chosen to balance retrieval efficiency and context completeness based on ParsBERT's architecture. \cite{Farahani_2021} This chunking accounts for Persian morphological complexities, ensuring semantic integrity. This process yielded a final knowledge base of approximately \textbf{1.7 million text chunks}, each representing a searchable unit of information.
 
 \begin{table*}[t]
 \centering
@@ -190,11 +192,11 @@ Table~\ref{tab:kb-sources} presents detailed statistics of our knowledge base so
 
 \subsubsection{Data Indexing}
 
-Each chunk was then vectorized (as will be detailed in Section~4) and indexed in an \textbf{Elasticsearch} instance. We designed a custom mapping that supports efficient hybrid search, enabling simultaneous keyword-based (BM25) \cite{Robertson1995Okapi} and dense vector searches. Each indexed document includes the text chunk, its corresponding vector embedding, and metadata such as the source URL for citation purposes.
+Each chunk was then vectorized (as will be detailed in Section~4) and indexed in an \textbf{Elasticsearch} instance. We designed a custom mapping that supports efficient hybrid search, enabling simultaneous keyword-based (BM25) \cite{robertson2009probabilistic} and dense vector searches. Each indexed document includes the text chunk, its corresponding vector embedding, and metadata such as the source URL for citation purposes.
 
 \subsection{Evaluation Dataset}
 
-To rigorously evaluate FARSIQA, we utilized and extended the \textbf{IslamicPCQA} dataset \cite{Ghafouri2023IslamicPCQA}. This dataset is the first of its kind for Persian, specifically designed for multi-hop complex question answering in the Islamic domain, following the principles of the well-known HotpotQA benchmark. IslamicPCQA contains \textbf{12,282 question-answer pairs} derived from nine Islamic encyclopedias and requires models to perform multi-step reasoning across different documents to arrive at the correct answer.
+To rigorously evaluate FARSIQA, we utilized and extended the \textbf{IslamicPCQA} dataset \cite{11075543}. This dataset is the first of its kind for Persian, specifically designed for multi-hop complex question answering in the Islamic domain, following the principles of the well-known HotpotQA benchmark. IslamicPCQA contains \textbf{12,282 question-answer pairs} derived from nine Islamic encyclopedias and requires models to perform multi-step reasoning across different documents to arrive at the correct answer.
 
 Recognizing that real-world QA systems must handle a variety of query types, we augmented the multi-hop IslamicPCQA test set to create a more comprehensive evaluation suite totaling \textbf{800 questions}, categorized as follows:
 
@@ -227,13 +229,18 @@ Obvious & Manual & 100 \\
 
 \section{The FARSIQA System: A FAIR-RAG Implementation}
 
-The FARSIQA system is architected as a multi-stage, agentic pipeline that implements our proposed \textbf{FAIR-RAG} framework. \cite{FAIR-RAG} Unlike conventional single-pass RAG systems, FARSIQA employs a dynamic, multi-step process to deconstruct, retrieve, refine, and generate answers, ensuring high levels of faithfulness and accuracy. The overall workflow, illustrated in Figure~1, can be divided into four primary phases: 1) Adaptive Query Processing, 2) Hybrid Retrieval and Re-ranking, 3) Iterative Evidence Refinement, and 4) Faithful Answer Generation. FAIR-RAG extends iterative approaches like Self-RAG \cite{Asai2023SelfRAG} by incorporating checklist-based Structured Evidence Assessment (SEA).
+The FARSIQA system is architected as a multi-stage, agentic pipeline that implements our proposed \textbf{FAIR-RAG} framework. \cite{fairrag} Unlike conventional single-pass RAG systems, FARSIQA employs a dynamic, multi-step process to deconstruct, retrieve, refine, and generate answers, ensuring high levels of faithfulness and accuracy. The overall workflow, illustrated in Figure~\ref{fig:fair-rag-pipeline}, can be divided into four primary phases: 1) Adaptive Query Processing, 2) Hybrid Retrieval and Re-ranking, 3) Iterative Evidence Refinement, and 4) Faithful Answer Generation. FAIR-RAG extends iterative approaches like Self-RAG \cite{asai2023self} by incorporating checklist-based Structured Evidence Assessment (SEA).
 
-%% Figure 1: An overview of the multi-stage FAIR-RAG pipeline implemented in FARSIQA, showing the flow from query validation and decomposition through iterative retrieval and refinement to final answer generation. (adapted from \cite{FAIR-RAG2025}).
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figure_1.png}
+\caption{An overview of the multi-stage FAIR-RAG pipeline implemented in FARSIQA, showing the flow from query validation and decomposition through iterative retrieval and refinement to final answer generation.}
+\label{fig:fair-rag-pipeline}
+\end{figure*}
 
 \subsection{Phase 1: Adaptive Query Processing}
 
-Upon receiving a user query, the system first performs an intelligent triage to determine the optimal processing path. This phase involves two key steps orchestrated by an LLM agent. \cite{FAIR-RAG} This task is guided by a structured prompt (see Appendix B for details).
+Upon receiving a user query, the system first performs an intelligent triage to determine the optimal processing path. This phase involves two key steps orchestrated by an LLM agent. \cite{fairrag} This task is guided by a structured prompt (see Appendix B for details).
 
 \subsubsection{Query Validation and Dynamic Model Selection}
 
@@ -243,11 +250,11 @@ The initial step is to validate the query's scope and complexity. An LLM agent c
 Queries identified as OUT\_OF\_SCOPE\_ISLAMIC or UNETHICAL are immediately rejected, preventing the system from engaging with irrelevant or harmful content.
 
 \paragraph{Computational Optimization.}
-Valid queries are categorized by complexity (VALID\_OBVIOUS, VALID\_SMALL, VALID\_LARGE, VALID\_REASONER). This allows for the dynamic allocation of computational resources. For instance, VALID\_OBVIOUS questions can be answered directly by the LLM's parametric knowledge, bypassing the expensive RAG pipeline entirely. For queries requiring retrieval, an appropriately sized generator model (LLM-small or LLM-large or LLM-reasoner) is pre-selected for the final generation stage, balancing cost and performance. \cite{FAIR-RAG}
+Valid queries are categorized by complexity (VALID\_OBVIOUS, VALID\_SMALL, VALID\_LARGE, VALID\_REASONER). This allows for the dynamic allocation of computational resources. For instance, VALID\_OBVIOUS questions can be answered directly by the LLM's parametric knowledge, bypassing the expensive RAG pipeline entirely. For queries requiring retrieval, an appropriately sized generator model (LLM-small or LLM-large or LLM-reasoner) is pre-selected for the final generation stage, balancing cost and performance. \cite{fairrag}
 
 \subsubsection{Query Decomposition}
 
-For queries proceeding to the RAG pipeline, a specialized LLM agent decomposes the original question into a set of simpler, semantically distinct sub-queries (max 4). This step is critical for complex, multi-faceted, or comparative questions. For example, a complex query about Islamic scholars' contributions to medicine and astronomy during the Islamic Golden Age and their influence on the European Renaissance would be decomposed into focused sub-queries like ``Medical innovations by Islamic scholars such as Avicenna and Rhazes,'' ``Astronomical advancements in Islamic observatories,'' and ``The transmission of Islamic scientific knowledge to Europe.'' This decomposition strategy significantly enhances retrieval recall by ensuring that all facets of the original question are targeted during the search phase. \cite{FAIR-RAG} This task is guided by a structured prompt (see Appendix B for details).
+For queries proceeding to the RAG pipeline, a specialized LLM agent decomposes the original question into a set of simpler, semantically distinct sub-queries (max 4). This step is critical for complex, multi-faceted, or comparative questions. For example, a complex query about Islamic scholars' contributions to medicine and astronomy during the Islamic Golden Age and their influence on the European Renaissance would be decomposed into focused sub-queries like ``Medical innovations by Islamic scholars such as Avicenna and Rhazes,'' ``Astronomical advancements in Islamic observatories,'' and ``The transmission of Islamic scientific knowledge to Europe.'' This decomposition strategy significantly enhances retrieval recall by ensuring that all facets of the original question are targeted during the search phase. \cite{fairrag} This task is guided by a structured prompt (see Appendix B for details).
 
 \subsection{Phase 2: Hybrid Retrieval and Re-ranking}
 
@@ -255,7 +262,7 @@ For each generated sub-query, FARSIQA employs a hybrid retrieval strategy to fet
 
 \subsubsection{Fine-tuned Dense Retriever}
 
-The core of our semantic search is a Transformer-based embedding model. We began with a strong pre-trained Persian model, \textbf{PartAI/Tooka-SBERT} \cite{PartAI/Tooka-SBERT}, and fine-tuned it on a custom dataset of \textbf{24,000 question/relevant-passage/irrelevant-passage triplets} from our Islamic corpus. Using a contrastive learning objective, the model was trained to map semantically similar queries and passages closer together in the embedding space. This domain-specific fine-tuning led to a 16\% improvement in Recall@3 over the base model (detailed in Section~6). During retrieval, this model converts sub-queries into dense vectors, and Elasticsearch performs an approximate nearest neighbor search using cosine similarity to find the top-k most relevant text chunks.
+The core of our semantic search is a Transformer-based embedding model. We began with a strong pre-trained Persian model, \textbf{PartAI/Tooka-SBERT} \cite{PartAITooka}, and fine-tuned it on a custom dataset of \textbf{24,000 question/relevant-passage/irrelevant-passage triplets} from our Islamic corpus. Using a contrastive learning objective, the model was trained to map semantically similar queries and passages closer together in the embedding space. This domain-specific fine-tuning led to a 16\% improvement in Recall@3 over the base model (detailed in Section~6). During retrieval, this model converts sub-queries into dense vectors, and Elasticsearch performs an approximate nearest neighbor search using cosine similarity to find the top-k most relevant text chunks.
 
 \subsubsection{Sparse Retriever}
 
@@ -263,24 +270,24 @@ To complement the semantic search, we use a traditional sparse retrieval method 
 
 \subsubsection{Hybrid Fusion and Re-ranking}
 
-The system retrieves the top 3 documents from both the dense and sparse retrievers, resulting in a candidate set of up to 6 documents per sub-query. These candidates are then merged and re-ranked using the \textbf{Reciprocal Rank Fusion (RRF)} algorithm \cite{Reciprocal rank fusion outperforms condorcet and individual rank learning methods}, which effectively combines the rankings from both retrieval methods without requiring hyperparameter tuning, producing a single, robustly ranked list of the top 3 most relevant documents to pass to the next phase. We selected the top-3 documents from each retriever (dense and sparse) based on empirical tuning, leveraging the hybrid search paradigm to balance semantic depth and keyword precision. Given that user queries are often decomposed into multiple sub-queries processed independently---potentially yielding diverse evidence sets---this choice optimizes the trade-off between retrieval precision, computational cost, and latency, ensuring sufficient evidence diversity without overwhelming the downstream filtering and refinement steps (as validated in ablation studies in Section~6).
+The system retrieves the top 3 documents from both the dense and sparse retrievers, resulting in a candidate set of up to 6 documents per sub-query. These candidates are then merged and re-ranked using the \textbf{Reciprocal Rank Fusion (RRF)} algorithm \cite{cormack2009reciprocal}, which effectively combines the rankings from both retrieval methods without requiring hyperparameter tuning, producing a single, robustly ranked list of the top 3 most relevant documents to pass to the next phase. We selected the top-3 documents from each retriever (dense and sparse) based on empirical tuning, leveraging the hybrid search paradigm to balance semantic depth and keyword precision. Given that user queries are often decomposed into multiple sub-queries processed independently---potentially yielding diverse evidence sets---this choice optimizes the trade-off between retrieval precision, computational cost, and latency, ensuring sufficient evidence diversity without overwhelming the downstream filtering and refinement steps (as validated in ablation studies in Section~6).
 
 \subsection{Phase 3: Iterative Evidence Refinement (The FAIR-RAG Loop)}
 
 This phase is the core of the FAIR-RAG framework, transforming the pipeline into a deliberative reasoning process that actively seeks to build a sufficient evidence base. The loop (max 3 iterations) consists of the following steps:
 
 \paragraph{Evidence Filtering.}
-All retrieved documents from all sub-queries are aggregated. An LLM agent then filters this collection, identifying and discarding any documents that are irrelevant or contain only tangential information, thus reducing noise for the subsequent steps. \cite{FAIR-RAG} This task is guided by a structured prompt (see Appendix B for details).
+All retrieved documents from all sub-queries are aggregated. An LLM agent then filters this collection, identifying and discarding any documents that are irrelevant or contain only tangential information, thus reducing noise for the subsequent steps. \cite{fairrag} This task is guided by a structured prompt (see Appendix B for details).
 
 \paragraph{Structured Evidence Assessment (SEA).}
-To ensure the sufficiency and relevance of the retrieved evidence, we employ the \textbf{Structured Evidence Assessment (SEA)} methodology introduced by \cite{FAIR-RAG}. This approach utilizes a prompted LLM agent to first deconstruct the user's query into a checklist of required informational components. It then systematically audits the retrieved documents against this checklist to identify both confirmed findings and specific ``intelligence gaps.'' This question-centric process ensures a rigorous, targeted evaluation and provides a structured basis for deciding whether to proceed with answer generation or to initiate another retrieval cycle. This task is guided by a structured prompt (see Appendix B for details).
+To ensure the sufficiency and relevance of the retrieved evidence, we employ the \textbf{Structured Evidence Assessment (SEA)} methodology introduced by \cite{fairrag}. This approach utilizes a prompted LLM agent to first deconstruct the user's query into a checklist of required informational components. It then systematically audits the retrieved documents against this checklist to identify both confirmed findings and specific ``intelligence gaps.'' This question-centric process ensures a rigorous, targeted evaluation and provides a structured basis for deciding whether to proceed with answer generation or to initiate another retrieval cycle. This task is guided by a structured prompt (see Appendix B for details).
 
 \paragraph{Termination or Refinement.}
 The outcome of the Structured Evidence Assessment (SEA) dictates the pipeline's next action:
 
 \begin{itemize}
-    \item \textbf{Termination}: If the analysis concludes that all required findings have been confirmed and there are no remaining gaps, the evidence is deemed sufficient. The iterative loop terminates, and the comprehensive evidence set is forwarded to the final answer generation phase. \cite{FAIR-RAG}
-    \item \textbf{Refinement}: If the analysis identifies one or more ``intelligence gaps,'' the system initiates a query refinement step. The detailed analysis summary, which specifies both the confirmed facts and the precise missing information, is passed to another specialized LLM agent. This agent is tasked with generating a new, highly-targeted set of sub-queries (1-4). By leveraging the already confirmed facts (e.g., using a person's identified name instead of their title), these new queries are designed to be laser-focused on resolving only the identified gaps. This strategic refinement avoids redundant searches and efficiently directs the subsequent retrieval pass to acquire the missing pieces of the puzzle. The new queries are then fed back into the Hybrid Retrieval phase (Section~4.2), and the refinement cycle continues. \cite{FAIR-RAG} This task is guided by a structured prompt (see Appendix B for details).
+    \item \textbf{Termination}: If the analysis concludes that all required findings have been confirmed and there are no remaining gaps, the evidence is deemed sufficient. The iterative loop terminates, and the comprehensive evidence set is forwarded to the final answer generation phase. \cite{fairrag}
+    \item \textbf{Refinement}: If the analysis identifies one or more ``intelligence gaps,'' the system initiates a query refinement step. The detailed analysis summary, which specifies both the confirmed facts and the precise missing information, is passed to another specialized LLM agent. This agent is tasked with generating a new, highly-targeted set of sub-queries (1-4). By leveraging the already confirmed facts (e.g., using a person's identified name instead of their title), these new queries are designed to be laser-focused on resolving only the identified gaps. This strategic refinement avoids redundant searches and efficiently directs the subsequent retrieval pass to acquire the missing pieces of the puzzle. The new queries are then fed back into the Hybrid Retrieval phase (Section~4.2), and the refinement cycle continues. \cite{fairrag} This task is guided by a structured prompt (see Appendix B for details).
 \end{itemize}
 
 This iterative refinement process allows FARSIQA to dynamically adapt its search strategy, enabling it to solve complex, multi-hop problems that would fail in a single-pass RAG system. The maximum of three iterations was determined empirically as an optimal trade-off between response depth, latency, and computational cost.
@@ -292,11 +299,11 @@ Once the refinement loop terminates with a sufficient set of evidence, the final
 \begin{itemize}
     \item \textbf{Strict Grounding:} The model is explicitly instructed to synthesize its answer \emph{solely} from the provided evidence, embedding numerical citations (e.g., [1], [2]) after each piece of information to ensure full traceability.
     \item \textbf{Neutrality on Controversial Topics:} For sensitive or disputed theological issues, the model is guided to present differing viewpoints found in the evidence neutrally, without endorsing any single perspective.
-    \item \textbf{Ethical Safeguards:} The system is explicitly prohibited from issuing religious edicts (\emph{fatwas}). If a query asks for a legal ruling, the generated answer must include a disclaimer advising the user to consult a qualified religious authority. These safeguards align with ethical guidelines in AI for sensitive domains \cite{Weidinger2021Ethical}.
+    \item \textbf{Ethical Safeguards:} The system is explicitly prohibited from issuing religious edicts (\emph{fatwas}). If a query asks for a legal ruling, the generated answer must include a disclaimer advising the user to consult a qualified religious authority. These safeguards align with ethical guidelines in AI for sensitive domains \cite{weidinger2021ethical}.
     \item \textbf{Structured Output:} The model is instructed to format its response---ranging from a short, direct answer to a comprehensive, multi-paragraph explanation with a summary---based on the depth of the available evidence.
 \end{itemize}
 
-This carefully engineered generation process is the final step in realizing the ``Faithful'' component of the FAIR-RAG framework, delivering a reliable and well-substantiated answer to the user. \cite{FAIR-RAG}
+This carefully engineered generation process is the final step in realizing the ``Faithful'' component of the FAIR-RAG framework, delivering a reliable and well-substantiated answer to the user. \cite{fairrag}
 
 \section{Experimental Setup}
 
@@ -315,7 +322,7 @@ As detailed in Section~3.2, our primary evaluation is conducted on a custom benc
 
 \subsection{Evaluation Methodology: LLM-as-Judge}
 
-Given the nuanced and generative nature of our evaluation tasks, we employ an \textbf{LLM-as-Judge} methodology \cite{Zheng2023JudgingLLMs} to ensure a scalable and consistent assessment. Our approach builds on established frameworks like G-Eval \cite{Liu2023GEval}, utilizing meticulously designed custom prompts to mitigate known biases. For our judge, we select \textbf{Llama-4-Maverick-17B-128E-Instruct-FP8} \cite{Llama4MaverickPaper_placeholder}, a highly capable instruction-tuned model. It was chosen for its strong aptitude in complex instruction following and generating structured data, making it a \textbf{well-suited evaluator} for our pipeline's components. The reliability of this model for our specific, well-defined tasks is not merely an assumption; it is \textbf{empirically confirmed by a strong correlation with human expert judgments}, as we will detail in the subsequent section (5.2.1). For each evaluation aspect, a specialized prompt was designed to guide the judge model. These prompts include clear task definitions, explicit scoring criteria, and illustrative examples to ensure high-quality, structured feedback in JSON format. This methodical approach, verified by human oversight, allows for a credible and multi-faceted analysis of our pipeline (see Appendix B for details).
+Given the nuanced and generative nature of our evaluation tasks, we employ an \textbf{LLM-as-Judge} methodology \cite{zheng2023judging} to ensure a scalable and consistent assessment. Our approach builds on established frameworks like G-Eval \cite{liu2023geval}, utilizing meticulously designed custom prompts to mitigate known biases. For our judge, we select \textbf{Llama-4-Maverick-17B-128E-Instruct-FP8} \cite{meta2025llama4}, a highly capable instruction-tuned model. It was chosen for its strong aptitude in complex instruction following and generating structured data, making it a \textbf{well-suited evaluator} for our pipeline's components. The reliability of this model for our specific, well-defined tasks is not merely an assumption; it is \textbf{empirically confirmed by a strong correlation with human expert judgments}, as we will detail in the subsequent section (5.2.1). For each evaluation aspect, a specialized prompt was designed to guide the judge model. These prompts include clear task definitions, explicit scoring criteria, and illustrative examples to ensure high-quality, structured feedback in JSON format. This methodical approach, verified by human oversight, allows for a credible and multi-faceted analysis of our pipeline (see Appendix B for details).
 
 \subsubsection{LLM-as-Judge is Reliable}
 
@@ -382,7 +389,7 @@ By comparing the full system against these variants, we can quantify the impact 
 \subsection{Implementation Details}
 
 \paragraph{LLM Agents.}
-We use a dynamic selection of models for different tasks to optimize for cost and performance. \textbf{Llama-3-8B-Instruct} \cite{Llama3Paper_placeholder} is used for less complex tasks like query decomposition and Structured Evidence Assessment (SEA). The more powerful \textbf{Llama-3.1-70B-Instruct} \cite{Llama3Paper_placeholder} is used for critical tasks requiring deeper understanding, such as evidence filtering, query refinement, and final answer generation. For highly complex reasoning tasks, the system can leverage \textbf{DeepSeek-R1} \cite{DeepSeekR1Paper_placeholder} as a specialized reasoner model.
+We use a dynamic selection of models for different tasks to optimize for cost and performance. \textbf{Llama-3-8B-Instruct} \cite{meta2024llama3} is used for less complex tasks like query decomposition and Structured Evidence Assessment (SEA). The more powerful \textbf{Llama-3.1-70B-Instruct} \cite{meta2024llama3} is used for critical tasks requiring deeper understanding, such as evidence filtering, query refinement, and final answer generation. For highly complex reasoning tasks, the system can leverage \textbf{DeepSeek-R1} \cite{deepseek2025r1} as a specialized reasoner model.
 
 \paragraph{Embedding Model.}
 Our dense retriever uses a \textbf{PartAI/Tooka-SBERT} model, fine-tuned on our custom dataset of \textbf{24k} Islamic question-passage pairs.
@@ -392,135 +399,323 @@ All retrieval and indexing operations are performed using \textbf{Elasticsearch 
 
 This comprehensive experimental design allows for a thorough and transparent evaluation of FARSIQA's performance, providing deep insights into the effectiveness of the FAIR-RAG framework.
 
-\section{Preamble}
-\begin{table*}
+\section{Results and Analysis}
+
+This section presents a comprehensive empirical evaluation of the FARSIQA system. We first report the performance of our fine-tuned retriever, then analyze its performance across multiple dimensions: end-to-end quality, component-level efficacy, the impact of iterative refinement, and computational efficiency. Our analysis includes rigorous ablation studies to demonstrate the value of each architectural component, particularly the iterative nature of the FAIR-RAG framework and our dynamic LLM selection strategy.
+
+\subsection{Retriever Performance}
+
+A high-performing retriever is crucial for any RAG system. Table~\ref{tab:retriever-performance} presents the performance of our dense retriever before and after fine-tuning on our custom Islamic Q\&A dataset, evaluated on the IslamicPCQA benchmark.
+
+\begin{table*}[t]
 \centering
-\begin{tabular}{lll}
+\small
+\begin{tabular}{lccccccc}
 \hline
-\textbf{Output} & \textbf{natbib command} & \textbf{Old ACL-style command}\\
+\textbf{Model} & \textbf{MRR} & \textbf{Recall@3} & \textbf{Recall@5} & \textbf{Recall@10} & \textbf{Prec@3} & \textbf{Prec@5} & \textbf{Prec@10} \\
 \hline
-\citep{ct1965} & \verb|\citep| & \verb|\cite| \\
-\citealp{ct1965} & \verb|\citealp| & no equivalent \\
-\citet{ct1965} & \verb|\citet| & \verb|\newcite| \\
-\citeyearpar{ct1965} & \verb|\citeyearpar| & \verb|\shortcite| \\
-\citeposs{ct1965} & \verb|\citeposs| & no equivalent \\
-\citep[FFT;][]{ct1965} &  \verb|\citep[FFT;][]| & no equivalent\\
+Baseline & 0.2006 & 0.1110 & 0.1470 & 0.2010 & 0.0740 & 0.0588 & 0.0402 \\
+Fine-tuned & \textbf{0.2271} & \textbf{0.1290} & \textbf{0.1580} & \textbf{0.2130} & \textbf{0.0860} & \textbf{0.0632} & \textbf{0.0426} \\
 \hline
 \end{tabular}
-\caption{\label{citation-guide}
-Citation commands supported by the style file.
-The style is based on the natbib package and supports all natbib citation commands.
-It also supports commands defined in previous ACL-style files for compatibility.
-}
+\caption{Performance of the Dense Retriever before (Baseline) and after Fine-Tuning.}
+\label{tab:retriever-performance}
 \end{table*}
-The first line of the file must be
-\begin{quote}
-\begin{verbatim}
-\documentclass[11pt]{article}
-\end{verbatim}
-\end{quote}
-To load the style file in the review version:
-\begin{quote}
-\begin{verbatim}
-\usepackage[review]{EMNLP2023}
-\end{verbatim}
-\end{quote}
-For the final version, omit the \verb|review| option:
-\begin{quote}
-\begin{verbatim}
-\usepackage{EMNLP2023}
-\end{verbatim}
-\end{quote}
-To use Times Roman, put the following in the preamble:
-\begin{quote}
-\begin{verbatim}
-\usepackage{times}
-\end{verbatim}
-\end{quote}
-(Alternatives like txfonts or newtx are also acceptable.)
-Please see the \LaTeX{} source of this document for comments on other packages that may be useful.
-Set the title and author using \verb|\title| and \verb|\author|. Within the author list, format multiple authors using \verb|\and| and \verb|\And| and \verb|\AND|; please see the \LaTeX{} source for examples.
-By default, the box containing the title and author names is set to the minimum of 5 cm. If you need more space, include the following in the preamble:
-\begin{quote}
-\begin{verbatim}
-\setlength\titlebox{<dim>}
-\end{verbatim}
-\end{quote}
-where \verb|<dim>| is replaced with a length. Do not set this length smaller than 5 cm.
 
-\section{Document Body}
+The fine-tuned model demonstrates a clear and consistent improvement across all standard information retrieval metrics. Most notably, we observe a \textbf{13.2\% increase in Mean Reciprocal Rank (MRR)} and a \textbf{16.2\% increase in Recall@3}. This confirms our hypothesis that domain-specific fine-tuning effectively adapts the embedding space to the nuances of Islamic texts, enabling the model to rank relevant documents more highly. The significant uplift in top-k recall is particularly beneficial for the downstream RAG pipeline, as it provides the generator with a more accurate and concise context. While the relative improvements are significant, the absolute scores underscore the inherent difficulty of the multi-hop retrieval task in IslamicPCQA, where two distinct ``golden paragraphs'' must often be retrieved. This challenge, however, is precisely the scenario our iterative framework is designed to overcome.
 
-\subsection{Footnotes}
+\subsubsection{Qualitative Analysis: Iterative Refinement as a Compensation Mechanism}
 
-Footnotes are inserted with the \verb|\footnote| command.\footnote{This is a footnote.}
+To illustrate how FAIR-RAG compensates for the inherent limitations of single-pass retrieval, consider the multi-hop query: ``Where was the author of the book Al-Iqtisad ila Tariq al-Rashad born?'' The correct answer is ``Tus''. Answering this requires finding two pieces of evidence: (1) a document linking the book to its author, ``Sheikh Tusi'', and (2) a biographical document stating Sheikh Tusi's birthplace.
 
-\subsection{Tables and figures}
+In its first iteration, FAIR-RAG generates sub-queries like ``author of Al-Iqtisad\ldots''. This successfully retrieves the first golden paragraph, identifying Sheikh Tusi as the author. However, this initial, broad search fails to locate the second crucial paragraph containing his biographical details. A standard RAG system would likely fail here, lacking the necessary evidence.
 
-See Table~\ref{tab:accents} for an example of a table and its caption.
-\textbf{Do not override the default caption sizes.}
+This is where FAIR-RAG's iterative nature becomes critical. The Structured Evidence Assessment (SEA) module recognizes the missing information (birthplace). Armed with the newly identified entity, ``Sheikh Tusi'', the framework initiates a second iteration. It now generates highly targeted sub-queries such as ``birth city of Sheikh Tusi'' and ``birthplace of Abu Ja'far Muhammad ibn Hasan Tusi''. These precise queries successfully retrieve the second golden paragraph, which explicitly states he was born in Tus.
 
-\subsection{Hyperlinks}
+This case study serves as a compelling illustration of our core thesis: while a powerful retriever is beneficial, its inevitable failures in complex scenarios do not have to result in system-level failure. The iterative refinement cycle of FAIR-RAG acts as a critical compensation mechanism, intelligently adapting its search strategy to overcome initial retrieval weaknesses and progressively build the complete evidence base required for a faithful answer.
 
-Users of older versions of \LaTeX{} may encounter the following error during compilation: 
-\begin{quote}
-\tt\verb|\pdfendlink| ended up in different nesting level than \verb|\pdfstartlink|.
-\end{quote}
-This happens when pdf\LaTeX{} is used and a citation splits across a page boundary. The best way to fix this is to upgrade \LaTeX{} to 2018-12-01 or later.
+\subsection{End-to-End System Performance}
 
-\subsection{Citations}
+To quantify the overall impact of the FAIR-RAG architecture, we conducted a head-to-head comparison between the full \textbf{FARSIQA} system and a \textbf{Naive RAG} baseline. The Naive RAG baseline uses a simple retrieve-and-generate pipeline with a single LLM call and no advanced components like query decomposition, filtering, or iteration. The results, averaged across our 800-sample evaluation set, are presented in Table~\ref{tab:e2e-performance}.
 
+\begin{table*}[t]
+\centering
+\footnotesize
+\begin{tabular}{lccccc}
+\hline
+\textbf{System} & \textbf{Ans. Relevance} & \textbf{Ans. Correct.} & \textbf{Faithfulness} & \textbf{Ctx. Relevance} & \textbf{Neg. Reject.} \\
+& \textbf{(1-5)} & \textbf{($\geq$4.0)} & \textbf{(\%)} & \textbf{(1-5)} & \textbf{(\%)} \\
+\hline
+Naive RAG & 3.56 & 55.3\% & 80.4\% & 3.31 & 57.0\% \\
+FARSIQA & \textbf{3.98} & \textbf{74.3\%} & \textbf{81.6\%} & \textbf{3.49} & \textbf{97.0\%} \\
+\hline
+\end{tabular}
+\caption{End-to-End Performance of the Full FARSIQA System vs. Naive RAG Baseline. \emph{Answer Correctness ($\geq$4.0)} represents the percentage of answers scored as high quality.}
+\label{tab:e2e-performance}
+\end{table*}
 
+The results unequivocally demonstrate the superiority of the FARSIQA system. The architectural sophistication of FAIR-RAG yields substantial improvements across every evaluation dimension. We observe a significant \textbf{19-point increase in Answer Correctness Accuracy}, indicating that users are far more likely to receive a high-quality, correct answer from FARSIQA.
 
-Table~\ref{citation-guide} shows the syntax supported by the style files.
-We encourage you to use the natbib styles.
-You can use the command \verb|\citet| (cite in text) to get ``author (year)'' citations, like this citation to a paper by \citet{Gusfield:97}.
-You can use the command \verb|\citep| (cite in parentheses) to get ``(author, year)'' citations \citep{Gusfield:97}.
-You can use the command \verb|\citealp| (alternative cite without parentheses) to get ``author, year'' citations, which is useful for using citations within parentheses (e.g. \citealp{Gusfield:97}).
+This is further explained by the gains in relevance metrics. \textbf{Answer Relevance} improves from 3.56 to 3.98 \textbf{(11.8\% improvement)}, and \textbf{Context Relevance} from 3.31 to 3.49 \textbf{(5.4\% improvement)}. These gains are directly attributable to the query decomposition and evidence filtering modules, which work in concert to first broaden the search for all facets of a query and then prune irrelevant documents, providing a cleaner, more focused context to the generator. While the improvement in \textbf{Faithfulness} is modest (1.2\% improvement), it is achieved on top of a much more relevant and complex evidence base.
 
-\subsection{References}
+The most dramatic improvements are seen in the system's robustness. FARSIQA achieves a near-perfect \textbf{97.0\% accuracy on Negative Rejection}, a 40-point increase over the baseline. This highlights the critical role of the initial query validation and scoping module in identifying and properly handling out-of-domain questions. Furthermore, the \textbf{16-point improvement in Noise Robustness} underscores the value of the evidence filtering and iterative refinement loops in distinguishing signal from noise, a task where the Naive RAG system struggles.
 
-\nocite{Ando2005,borschinger-johnson-2011-particle,andrew2007scalable,rasooli-tetrault-2015,goodman-etal-2016-noise,harper-2014-learning}
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.7\textwidth]{figure_2.png}
+\caption{Answer Correctness (1-5) by Category for FARSIQA vs. Naive RAG. FARSIQA demonstrates marked superiority on challenging tasks, particularly in handling noisy contexts and out-of-scope queries.}
+\label{fig:performance-by-category}
+\end{figure*}
 
-The \LaTeX{} and Bib\TeX{} style files provided roughly follow the American Psychological Association format.
-If your own bib file is named \texttt{custom.bib}, then placing the following before any appendices in your \LaTeX{} file will generate the references section for you:
-\begin{quote}
-\begin{verbatim}
-\bibliographystyle{acl_natbib}
-\bibliography{custom}
-\end{verbatim}
-\end{quote}
-You can obtain the complete ACL Anthology as a Bib\TeX{} file from \url{https://aclweb.org/anthology/anthology.bib.gz}.
-To include both the Anthology and your own .bib file, use the following instead of the above.
-\begin{quote}
-\begin{verbatim}
-\bibliographystyle{acl_natbib}
-\bibliography{anthology,custom}
-\end{verbatim}
-\end{quote}
-Please see Section~\ref{sec:bibtex} for information on preparing Bib\TeX{} files.
+\subsection{Ablation Study 1: The Impact of Iterative Refinement}
 
-\subsection{Appendices}
+A core hypothesis of our work is that an iterative refinement process is essential for handling complex queries in knowledge-intensive domains. To empirically validate this and determine the optimal number of refinement cycles, we conducted an ablation study by varying the maximum number of iterations (max\_iter) from 1 (a single-pass system) to 4. We evaluated the impact on three key dimensions: \textbf{end-to-end answer quality, computational cost (API calls and tokens), and response time (latency)}.
 
-Use \verb|\appendix| before any appendix section to switch the section numbering over to letters. See Appendix~\ref{sec:appendix} for an example.
+The comprehensive results are presented in Table~\ref{tab:iteration-ablation}. The data reveals a clear and compelling narrative: while iteration significantly boosts performance, there is a clear point of diminishing returns where additional cycles increase cost and delay without adding meaningful value.
 
-\section{Bib\TeX{} Files}
-\label{sec:bibtex}
+\begin{table*}[t]
+\centering
+\footnotesize
+\begin{tabular}{lccccc}
+\hline
+\textbf{Max Iter.} & \textbf{Ans. Rank} & \textbf{Improve. Rate} & \textbf{API Calls} & \textbf{Tokens} & \textbf{Latency (s)} \\
+& & \textbf{(vs. Iter 1)} & & & \\
+\hline
+1 (Single Pass) & 3.32 & -- & 4.46 & 8,199 & 15.30 \\
+2 & 2.50 & 74.88\% & 5.56 & 10,634 & 19.84 \\
+3 (Full System) & \textbf{2.10} & \textbf{80.1\%} & \textbf{6.07} & \textbf{11,863} & \textbf{22.137} \\
+4 & 2.08 & 77.3\% & 6.48 & 12,736 & 23.77 \\
+\hline
+\end{tabular}
+\caption{Impact of the Number of Iterations on Answer Quality and Efficiency. Answer Rank is rated by an LLM-as-Judge (lower is better). Improvement Rate is the percentage of cases where the answer was judged superior to the Iteration 1 answer.}
+\label{tab:iteration-ablation}
+\end{table*}
 
-Unicode cannot be used in Bib\TeX{} entries, and some ways of typing special characters can disrupt Bib\TeX's alphabetization. The recommended way of typing special characters is shown in Table~\ref{tab:accents}.
+Moving from one to three iterations yields a dramatic improvement \textbf{from 3.32 to 2.10 in the ``average answer rank''} directly confirming that the iterative process is critical for gathering sufficient evidence to mitigate hallucination. The most telling statistic is the \textbf{80.1\% improvement rate}, which indicates that for four out of five complex questions, the 3-iteration process produces a definitively superior answer compared to a single-pass approach.
 
-Please ensure that Bib\TeX{} records contain DOIs or URLs when possible, and for all the ACL materials that you reference.
-Use the \verb|doi| field for DOIs and the \verb|url| field for URLs.
-If a Bib\TeX{} entry has a URL or DOI field, the paper title in the references section will appear as a hyperlink to the paper, using the hyperref \LaTeX{} package.
+\textbf{Analysis of Diminishing Returns (Iteration 4):} The fourth iteration marks a clear point of diminishing returns. The key quality metric---average answer rank---shows a negligible improvement from 2.10 to 2.08, a statistically insignificant gain. Intriguingly, the Improvement Rate slightly drops to 77.3\%, suggesting that the fourth iteration may occasionally introduce noise that makes the final answer slightly less preferred than the more concise 3-iteration result.
+
+This stagnation in quality is coupled with a tangible increase in both cost and latency. The fourth iteration adds nearly 7\% to the average API calls and consumes approximately 900 additional tokens per query. This is accompanied by a 7.4\% increase in average latency, pushing the response time from 22.1s to 23.8s. This trade-off---a notable increase in computational cost and user-perceived delay for no discernible improvement in answer quality---makes a fourth iteration clearly inefficient.
+
+\textbf{Conclusion on Optimal Configuration:} Based on this comprehensive analysis, we establish a maximum of 3 iterations as the optimal configuration for FARSIQA. This setting maximizes answer faithfulness and relevance while maintaining an acceptable balance of \textbf{computational efficiency and response time}, delivering the full power of the FAIR-RAG framework without incurring the cost and delay of unproductive refinement cycles.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.6\textwidth]{figure_3.png}
+\caption{Trade-off between Answer Accuracy and Token Cost Across Iterations. The plot vividly depicts the principle of diminishing returns, with Iteration 3 achieving peak performance at optimal cost.}
+\label{fig:iteration-cost-tradeoff}
+\end{figure*}
+
+\subsection{Ablation Study 2: The Role of Dynamic LLM Selection}
+
+A key architectural feature of FARSIQA is its dynamic allocation of different-sized LLMs for various sub-tasks. This strategy aims to balance analytical power with \textbf{financial expenditure, computational cost, and response time} by using powerful models only for the most complex reasoning steps. To validate this design, we conducted an ablation study comparing our \textbf{Dynamic} system against three static configurations: one using only a small LLM (\textbf{Static Small}), one using a large LLM (\textbf{Static Large}), and one using a specialized reasoner model (\textbf{Static Reasoner}) for all tasks.
+
+The results, presented in Table~\ref{tab:llm-ablation}, reveal a compelling trade-off between quality and efficiency, ultimately highlighting the superiority of our dynamic approach.
+
+\begin{table*}[t]
+\centering
+\scriptsize
+\begin{tabular}{lccccccc}
+\hline
+\textbf{System} & \textbf{Correct.} & \textbf{Faithful} & \textbf{Neg. Reject.} & \textbf{API Calls} & \textbf{Tokens} & \textbf{Cost (\$)} & \textbf{Latency (s)} \\
+& \textbf{(1-5)} & \textbf{(\%)} & \textbf{(\%)} & & & & \\
+\hline
+Static Small & 3.38 & 35.4\% & 74.0\% & 7.94 & 16,145 & 5.33e-4 & 30.13 \\
+Static Large & 4.03 & 65.6\% & 94.0\% & 6.07 & 11,681 & 2.89e-3 & 21.80 \\
+Static Reasoner & 4.33 & 57.71\% & 82\% & 7.54 & 33,934 & 2.96e-2 & 77.94 \\
+FARSIQA (Dynamic) & \textbf{4.06} & \textbf{62.5\%} & \textbf{97.0\%} & \textbf{6.07} & \textbf{11,863} & \textbf{2.51e-3} & \textbf{22.14} \\
+\hline
+\end{tabular}
+\caption{Ablation study on LLM size. The full FARSIQA system uses dynamic allocation. All systems are run with max\_iter=3.}
+\label{tab:llm-ablation}
+\end{table*}
+
+\textbf{Performance Analysis:}
+
+The Static Small configuration proves inadequate, suffering a significant \textbf{27-point drop in faithfulness} compared to our dynamic system and confirming that smaller models lack the necessary reasoning capacity for critical steps like evidence filtering. The Static Reasoner configuration achieves the highest Answer Correctness at 4.33, yet its faithfulness score is surprisingly lower than both the large and dynamic models, and it performs poorly on Negative Rejection. This suggests that while specialized for reasoning, it may be less optimized for other crucial sub-tasks like query validation or strict evidence adherence.
+
+The Static Large configuration achieves the highest faithfulness at 65.6\%. However, it performs worse on \textbf{Negative Rejection (94.0\% vs. 97.0\%)}. This indicates that our dynamic approach---which uses a large model specifically for the crucial initial query validation step---is more effective for that task than a system using one model generically. Our dynamic system achieves a top-tier Answer Correctness score (4.06) and the best Negative Rejection score, demonstrating a more robust and well-rounded performance profile.
+
+\textbf{Efficiency and Cost-Benefit Analysis:}
+
+The efficiency data provides the most decisive justification for our dynamic strategy, establishing a clear superiority in cost-performance. An analysis across all configurations reveals the following:
+
+\begin{itemize}
+\item \textbf{Static Reasoner: Prohibitively Expensive and Impractical.} This configuration is financially unviable for any practical deployment. Its per-query cost is \textbf{over an order of magnitude (11.8x) higher} than our dynamic system. This extreme expense is coupled with an unusable average latency of 77.9 seconds, which is \textbf{3.5 times slower} than our approach.
+
+\item \textbf{Static Small: A False Economy.} While being the cheapest option in absolute terms, this system represents a classic false economy. Its low cost is rendered irrelevant by its extremely \textbf{poor performance across all quality metrics}. Furthermore, it is surprisingly inefficient in terms of time, with a \textbf{38\% higher latency} than our dynamic system.
+
+\item \textbf{Static Large vs. FARSIQA (Dynamic): The Optimal Trade-off.} Our dynamic system achieves its superior and more robust performance profile while being \textbf{approximately 13\% more cost-effective} per query (2.51e-3 vs. 2.89e-3). This translates to significant savings at scale.
+\end{itemize}
+
+This establishes a clear value proposition: our dynamic system exchanges a negligible increase in latency for a \textbf{significant gain in functional robustness \emph{and} a tangible 13\% reduction in operational cost}. This makes it the unequivocally superior choice for a scalable, effective, and financially sustainable system.
+
+\subsection{Component-Level Performance Analysis}
+
+To gain deeper insights into the internal mechanics of the FAIR-RAG pipeline, we conducted a fine-grained evaluation of its core reasoning modules. By assessing each component individually, we can identify its specific contribution to the system's overall performance and pinpoint areas for future optimization. The results of this analysis are summarized in Table~\ref{tab:component-performance}.
+
+\begin{table*}[t]
+\centering
+\small
+\begin{tabular}{llr}
+\hline
+\textbf{Component} & \textbf{Metric} & \textbf{Value} \\
+\hline
+Query Decomposition & Avg. Score (1-5) & 4.13 \\
+\hline
+Evidence Filtering & Precision & 71.7\% \\
+& Recall & 76.8\% \\
+& F1-Score & 74.2\% \\
+\hline
+Structured Evidence Assessment (SEA) & Accuracy & 66.0\% \\
+& Precision & 74.0\% \\
+& Recall & 62.6\% \\
+& F1-Score & 67.9\% \\
+\hline
+Query Refinement & Avg. Score (1-5) & 4.61 \\
+\hline
+\end{tabular}
+\caption{Performance of FARSIQA's Core Internal Modules. Scores are evaluated by an LLM-as-Judge.}
+\label{tab:component-performance}
+\end{table*}
+
+\textbf{Query Decomposition:}
+
+The initial query decomposition module achieved a high average score of \textbf{4.13 out of 5.0}. This indicates that the system is highly effective at deconstructing complex, multi-faceted user questions into a set of coherent and searchable sub-queries. This strong initial step is fundamental to the pipeline's ability to retrieve a comprehensive set of initial evidence.
+
+\textbf{Evidence Filtering:}
+
+The evidence filtering module demonstrates a solid balance between precision and recall, achieving an \textbf{F1-Score of 74.2\%}. With a precision of 71.7\%, the filter is generally successful at removing irrelevant documents from the context. However, the analysis also reveals that in its effort to reduce noise, the module can occasionally be overzealous and discard potentially useful information. This highlights a classic precision-recall trade-off that represents a key area for future tuning.
+
+\textbf{Structured Evidence Assessment (SEA):}
+
+The Structured Evidence Assessment (SEA) is the crucial decision-making component of the iterative loop. With an \textbf{accuracy of 66.0\%} and an \textbf{F1-Score of 67.9\%}, the module performs reliably better than random chance. Its \textbf{precision of 74.0\%} indicates that when it decides the evidence is sufficient, it is usually correct. However, its recall of 62.6\% suggests it is more prone to prematurely stopping the loop rather than continuing to search for more evidence. Improving the recall of this module could further enhance the quality of answers for the most complex queries.
+
+\textbf{Query Refinement:}
+
+When the system determines that the current evidence is insufficient and triggers a refinement step, its performance is exceptionally strong. The query refinement module achieved an outstanding average score of \textbf{4.61 out of 5.0}. This high score confirms that the system excels at identifying specific knowledge gaps in the existing context and generating new, highly-targeted queries to fill them. This ability to intelligently adapt its search strategy is a core strength of the FAIR-RAG architecture and a key driver of its performance on multi-hop questions.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figure_4.png}
+\caption{Qualitative case study of iterative refinement in FAIR-RAG. The system systematically decomposes a complex comparative query, pursues parallel reasoning tracks, and applies targeted refinement to fill information gaps before synthesizing a comprehensive answer.}
+\label{fig:case-study-iterative}
+\end{figure*}
+
+\subsection{A Complex Case Study: Comparative Multi-Hop Reasoning}
+
+To demonstrate the unique advantages of the FARSIQA, we analyze a hybrid comparative, multi-hop query from the Islamic domain. This type of query is particularly challenging because it requires the system to conduct two parallel lines of multi-hop reasoning and then synthesize the results into a coherent comparison.
+
+\textbf{The query is:} ``Compare the burial place of the Prophet who was swallowed by a whale with the city where the Prophet who built the Kaaba was born.''
+
+\textbf{Why This Query is Difficult for Standard RAG Frameworks:}
+
+A standard RAG system would likely fail because it treats the query as a single, overloaded semantic vector. It would struggle to simultaneously resolve two separate, multi-step entities (``Prophet swallowed by a whale'' $\rightarrow$ Yunus $\rightarrow$ Nineveh) and (``Prophet who built the Kaaba'' $\rightarrow$ Ibrahim $\rightarrow$ Ur). The system would likely retrieve a document about one Prophet but fail to find the other, or retrieve general documents that lack the specific geographical details required.
+
+\textbf{FAIR-RAG in Action:}
+
+\begin{itemize}
+\item \textbf{Iteration 1: Semantic Decomposition \& Parallel Initial Retrieval}
+  \begin{itemize}
+  \item \textbf{Adaptive Sub-Queries:} FAIR-RAG's first action is to decompose the comparative query into two distinct, parallel investigative tracks:
+    \begin{itemize}
+    \item Track A: [``burial place of the Prophet swallowed by a whale'']
+    \item Track B: [``birth city of the Prophet who built the Kaaba'']
+    \end{itemize}
+  \item \textbf{Retrieved Evidence:} The system retrieves initial evidence for both tracks concurrently:
+    \begin{itemize}
+    \item Evidence 1: \emph{``Prophet Yunus (Jonah) is the prophet who was famously swallowed by a large fish (or whale) as a trial from God. After being saved, he returned to his people to preach.''}
+    \item Evidence 2: \emph{``Prophet Ibrahim (Abraham), with the help of his son Ismail, is credited with constructing the foundations of the Kaaba in Mecca as a house of worship for God.''}
+    \end{itemize}
+  \item \textbf{Structured Evidence Assessment (SEA):}
+    \begin{itemize}
+    \item \textbf{is\_sufficient:} `No'
+    \item \textbf{analysis\_summary:} The initial analysis successfully identified the primary entities for both comparative tracks: Prophet Yunus and Prophet Ibrahim. However, the key required findings regarding the associated geographical locations (burial place and birthplace) have not yet been addressed. Significant information gaps remain, precluding a complete answer.
+    \end{itemize}
+  \end{itemize}
+
+\item \textbf{Iteration 2: Parallel Query Refinement \& Evidence Completion}
+  \begin{itemize}
+  \item \textbf{Refined Queries:} The refinement module now uses the entities identified in Iteration 1 to generate new, highly-focused queries for each track:
+    \begin{itemize}
+    \item Refined Query A: [``tomb of Prophet Yunus'']
+    \item Refined Query B: [``birthplace of Prophet Ibrahim'']
+    \end{itemize}
+  \item \textbf{Retrieved Evidence:} The new targeted queries retrieve the final missing pieces of information:
+    \begin{itemize}
+    \item Evidence 3: \emph{``The traditional site of the tomb of Prophet Yunus is located on a hill in the ancient city of Nineveh, which is near modern-day Mosul, Iraq.''}
+    \item Evidence 4: \emph{``Historical and religious sources indicate that Prophet Ibrahim was born in the ancient city of Ur of the Chaldees, located in what is now southern Iraq.''}
+    \end{itemize}
+  \item \textbf{Structured Evidence Assessment (SEA):}
+    \begin{itemize}
+    \item \textbf{is\_sufficient:} `Yes'
+    \item \textbf{analysis\_summary:} The refined queries successfully retrieved the remaining geographical data. All items on the `Required Findings' checklist---including the identities of both prophets and their respective geographical locations---are now confirmed by the aggregated evidence. No information gaps remain, enabling a direct, evidence-grounded comparison.
+    \end{itemize}
+  \end{itemize}
+
+\item \textbf{Final Faithful Generation:}
+The system synthesizes the evidence from both parallel tracks into a single, structured, and fully-grounded comparative answer: ``The burial place of the Prophet who was swallowed by a whale and the birth city of the Prophet who built the Kaaba are both located in modern-day Iraq. The Prophet swallowed by a whale was \textbf{Yunus} [1], and his tomb is located in the ancient city of \textbf{Nineveh (near Mosul)} [3]. The Prophet who built the Kaaba was \textbf{Ibrahim} [2], who was born in the ancient city of \textbf{Ur} [4].''
+\end{itemize}
+
+This case study highlights FAIR-RAG's key architectural advantage: its ability to systematically decompose a complex goal into parallel sub-problems and then apply iterative refinement to solve each one before synthesizing a comprehensive final answer. This structured, multi-threaded reasoning process is what enables it to succeed where other advanced RAG frameworks may fail.
+
+\subsection{Failure Mode Analysis}
+
+To move beyond aggregate performance metrics and gain a deeper, qualitative understanding of FARSIQA's limitations, we conducted a rigorous failure mode analysis. This process adopted a hybrid human-AI methodology, using an advanced LLM judge for initial categorization, followed by meticulous expert human validation. We analyzed a comprehensive set of 122 unique underperforming queries from our test set.
+
+The overall results of this analysis are visualized in Figure~\ref{fig:failure-modes}. The distribution of primary error modes reveals that while failures occur across the pipeline, they are heavily concentrated in the final two stages. Generation Failures emerged as the most dominant error category, accounting for a significant majority of all cases (54.9\%). This was followed by Retrieval Failures at 27.9\%, indicating that finding the correct information and correctly synthesizing it are the two primary challenges.
+
+\textbf{Generation Failures (54.9\%):} Representing over half of all errors, this category is unequivocally the primary bottleneck in the FARSIQA architecture. These failures occur when the system successfully retrieves and filters the correct evidentiary documents but fails to synthesize them into a factually accurate answer. We identified several recurring root causes:
+
+\begin{itemize}
+\item \textbf{Flawed Logical Inference:} The model struggles with reasoning tasks that require understanding implicit relationships, particularly with cyclical concepts or complex relational chains.
+\item \textbf{Misinterpretation of Question Intent:} The generator often fails to adhere strictly to the user's specific query, instead providing a related but incorrect answer.
+\item \textbf{Incorrect Entity Relationship Mapping:} A frequent sub-type of flawed inference where the model fails to correctly map complex relationships described in the query.
+\item \textbf{Ignoring Correct Evidence:} In cases with conflicting or noisy evidence, the model sometimes grounds its answer on an incorrect document while ignoring the document containing the correct information.
+\end{itemize}
+
+\textbf{Retrieval Failures (27.9\%):} As the second-largest category, these errors represent a fundamental inability to source the required information from the knowledge base. The predominant cause was identified as Knowledge Base Gaps, where information for highly specific, long-tail queries was entirely absent from the corpus.
+
+In summary, this comprehensive failure analysis reveals that FARSIQA's primary vulnerability lies not in its ability to find information, but in its capacity to reason over and faithfully synthesize it. The overwhelming prevalence of Generation Failures highlights the final language model as the most critical area for future research.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.5\textwidth]{figure_7.png}
+\caption{Distribution of primary failure modes in the FARSIQA system across 122 failed queries. Generation Failures represent the most significant bottleneck, accounting for over half of all observed errors, followed by Retrieval Failures.}
+\label{fig:failure-modes}
+\end{figure*}
+
+\section{Conclusion and Future Work}
+
+In this paper, we addressed the critical challenge of developing a reliable and faithful question-answering system for the high-stakes, nuanced domain of Persian Islamic studies. We introduced \textbf{FARSIQA}, a novel QA system built upon our \textbf{FAIR-RAG} architecture---a framework designed for Faithful, Adaptive, Iterative Refinement. Our work represents a significant step forward in creating specialized AI systems that can handle complex queries in sensitive domains with a strong emphasis on accuracy and traceability.
+
+Our primary contribution is twofold: to the best of our knowledge, the first robust, end-to-end system in Persian Islamic QA, and the introduction of an advanced RAG architecture optimized for complex reasoning. Through extensive experiments (as detailed in Section 6), we demonstrated that the iterative refinement loop at the core of FAIR-RAG is crucial for improving answer quality. Our full system achieved a \textbf{negative rejection accuracy of 97.0\%} (a 40-point improvement over baselines), validating that the query validation and iterative evidence gathering processes are vital for robustly handling out-of-scope or harmful queries in sensitive domains. Furthermore, by creating a comprehensive knowledge base of over one million documents and releasing a fine-tuned, domain-specific retriever model, we have established a strong new benchmark for future research in Persian NLP and digital humanities.
+
+\subsection{Limitations and Future Work}
+
+Despite its strong performance, FARSIQA has several limitations that open avenues for future research.
+
+\begin{itemize}
+    \item \textbf{Lack of Conversational Context:} The current system is stateless and processes each query independently. It lacks a conversational memory, preventing it from understanding follow-up questions or retaining context from a user's dialogue history.
+    \item \textbf{Knowledge Base Coverage:} While extensive, our knowledge base does not encompass the entirety of Islamic scholarly texts. Expanding it to include a wider range of sources, particularly classical hadith collections and diverse jurisprudential opinions, would further enhance its comprehensiveness. Additionally, potential cultural or interpretive biases in the curated sources could affect representation of minority views.
+    \item \textbf{Latency:} The multi-step, iterative nature of the FAIR-RAG pipeline, while effective, introduces latency (averaging 6.07 API calls per query, as shown in Section 6.3), which may constrain real-time applications.
+    \item \textbf{Acknowledgment of Bias:} We have endeavored to incorporate a diverse range of Islamic perspectives to build a balanced knowledge base. However, for the sake of full transparency, it is crucial to acknowledge the composition of our current knowledge corpus, a comprehensive list of which is provided in Table 1. An analysis of these sources reveals that the collection predominantly features texts from the Shi'a school of Islamic thought. Consequently, while the FARSIQA system is designed to generate faithful and neutral responses based on the provided context, the answers may inherently reflect the theological and jurisprudential perspectives dominant within the source material. This represents a known limitation of the current system. We recognize the importance of incorporating a broader spectrum of Islamic schools of thought in future iterations to further mitigate this potential bias and enhance the system's universality.
+\end{itemize}
+
+To address these limitations, our future work will proceed in several directions. First, we plan to integrate a \textbf{conversational memory module} using techniques like context caching and chain-of-thought prompting \cite{wei2022chain} to enable multi-turn dialogues. Second, we will explore methods for \textbf{knowledge base expansion} and \textbf{continuous updates}, such as automated crawling and verification of new scholarly sources. Third, investigating model optimization techniques such as \textbf{quantization} \cite{dettmers2023qlora} and distillation could help reduce latency without significantly compromising quality. Finally, developing a mechanism for incorporating a \textbf{user feedback loop} would allow the system to learn from its mistakes and improve over time, potentially through reinforcement learning from human feedback (RLHF).
+
+In conclusion, this work demonstrates that by moving beyond simple retrieve-and-read pipelines, it is possible to build specialized QA systems that are not only powerful but also trustworthy. Beyond technical advancements, FARSIQA promotes equitable access to Persian Islamic knowledge, fostering cultural preservation and informed discourse. We believe that frameworks like FAIR-RAG can serve as a blueprint for developing responsible AI in other high-stakes domains, such as law and medicine, where accuracy and faithfulness are paramount.
 
 \section*{Limitations}
-EMNLP 2023 requires all submissions to have a section titled ``Limitations'', for discussing the limitations of the paper as a complement to the discussion of strengths in the main text. This section should occur after the conclusion, but before the references. It will not count towards the page limit.  
 
-The discussion of limitations is mandatory. Papers without a limitation section will be desk-rejected without review.
-ARR-reviewed papers that did not include ``Limitations'' section in their prior submission, should submit a PDF with such a section together with their EMNLP 2023 submission.
+The limitations of this work are discussed comprehensively in Section 6.1 as part of our Conclusion and Future Work. To summarize the key points:
 
-While we are open to different types of limitations, just mentioning that a set of results have been shown for English only probably does not reflect what we expect. 
-Mentioning that the method works mostly for languages with limited morphology, like English, is a much better alternative.
-In addition, limitations such as low scalability to long text, the requirement of large GPU resources, or other things that inspire crucial further investigation are welcome.
+\begin{itemize}
+    \item The current system lacks conversational context and memory, processing each query independently without retaining dialogue history.
+    \item While our knowledge base is extensive, it does not cover the entirety of Islamic scholarly texts, and expanding it to include more diverse sources, particularly classical hadith collections and multiple jurisprudential schools, would enhance comprehensiveness and reduce potential bias.
+    \item The iterative nature of FAIR-RAG introduces latency challenges (averaging 6.07 API calls per query), which may limit real-time applications.
+    \item Our knowledge corpus predominantly features Shi'a Islamic sources, which may affect the theological and jurisprudential perspectives reflected in the system's responses. We acknowledge this limitation and plan to incorporate broader Islamic perspectives in future work.
+\end{itemize}
 
 \section*{Ethics Statement}
 Scientific work published at EMNLP 2023 must comply with the \href{https://www.aclweb.org/portal/content/acl-code-ethics}{ACL Ethics Policy}. We encourage all authors to include an explicit ethics statement on the broader impact of the work, or other ethical considerations after the conclusion but before the references. The ethics statement will not count toward the page limit (8 pages for long, 4 pages for short papers).
@@ -544,14 +739,206 @@ John Chen, Henry S. Thompson and Donald Walker.
 Additional elements were taken from the formatting instructions of the \emph{International Joint Conference on Artificial Intelligence} and the \emph{Conference on Computer Vision and Pattern Recognition}.
 
 % Entries for the entire Anthology, followed by custom entries
-\bibliography{anthology,custom}
+\bibliography{anthology,custom,references}
 \bibliographystyle{acl_natbib}
 
 \appendix
 
-\section{Example Appendix}
-\label{sec:appendix}
+\section{Knowledge Base Source Details}
+\label{sec:appendix-kb-sources}
 
-This is a section in the appendix.
+This appendix provides a detailed description of the encyclopedic and Q\&A platform sources that constitute the knowledge base used in this research, as summarized in Table 1.
+
+\subsection{Encyclopedic Sources}
+
+This section details the encyclopedias and their respective areas of focus.
+
+\begin{itemize}
+    \item \textbf{WikiShia:} A specialized encyclopedia focusing on topics related to Shia Islam, encompassing beliefs, personalities, literature, significant locations, historical events, rituals, and sects. URL: \url{https://fa.wikishia.net/}
+    
+    \item \textbf{WikiFeqh:} A comprehensive resource covering concepts and topics within the Islamic sciences, such as Quranic exegesis (Tafsir), jurisprudence (Fiqh), principles of jurisprudence (Usul al-Fiqh), philosophy, and theology (Kalam). URL: \url{https://fa.wikifeqh.ir/}
+    
+    \item \textbf{WikiAhlolbait (D\={a}neshname-ye Esl\={a}m\={\i}):} A comprehensive encyclopedia covering a wide range of subjects in Islam. URL: \url{https://wiki.ahlolbait.com/}
+    
+    \item \textbf{ImamatPedia:} An encyclopedia dedicated to the concepts of Imamate (leadership) and Wilayat (guardianship), detailing the lives of the Infallibles (Ma'sumin), related historical events, and key figures. URL: \url{https://fa.imamatpedia.com/}
+    
+    \item \textbf{IslamPedia:} A general-purpose encyclopedia on various Islamic subjects. URL: \url{http://www.islampedia.ir/}
+    
+    \item \textbf{WikiHaj:} A specialized resource for terminology and concepts related to the Hajj (the major Islamic pilgrimage to Mecca) and Ziyarah (pilgrimage to holy sites). URL: \url{https://wikihaj.com/}
+    
+    \item \textbf{WikiNoor:} A comprehensive digital encyclopedia covering a broad spectrum of Islamic knowledge, often providing access to digitized books and articles. URL: \url{https://fa.wikinoor.ir/}
+    
+    \item \textbf{WikiPasokh:} An encyclopedia structured in a question-and-answer format, addressing topics in Quranic sciences, theology (Kalam), law, comparative religion, ethics, and history. URL: \url{https://fa.wikipasokh.com/}
+    
+    \item \textbf{WikiHussain:} A thematic encyclopedia centered on the life, teachings, and legacy of Imam Hussain ibn Ali. URL: \url{https://fa.wikihussain.com/}
+    
+    \item \textbf{The Great Islamic Encyclopedia (D\={a}'erat-ol-Ma'\={a}ref-e Bozorg-e Esl\={a}m\={\i}):} A major, authoritative scholarly encyclopedia covering a vast range of topics related to Islamic civilization, history, and culture. URL: \url{https://www.cgie.org.ir/}
+    
+    \item \textbf{Qomnet.johd.ir:} A broad digital library and resource hub hosted by the Jihad-e Daneshgahi (Academic Center for Education, Culture and Research) of Qom, covering diverse topics in Islamic studies. URL: \url{https://qomnet.johd.ir/}
+\end{itemize}
+
+\subsection{Question-Answering (Q\&A) Platforms}
+
+This section lists the Q\&A platforms, which primarily contain collections of questions posed by users and authoritative answers provided by Islamic scholars and institutions.
+
+\begin{itemize}
+    \item \textbf{IslamQuest.net:} \url{https://www.islamquest.net/fa/}
+    \item \textbf{rasekhoon.net:} \url{https://rasekhoon.net/}
+    \item \textbf{porseman.com:} \url{https://porseman.com/}
+    \item \textbf{aminsearch.com:} \url{https://aminsearch.com/}
+    \item \textbf{makarem.ir:} \url{https://www.makarem.ir/}
+    \item \textbf{hawzah.net:} \url{https://hawzah.net/}
+    \item \textbf{bahjat.ir:} \url{https://bahjat.ir/}
+    \item \textbf{pasokh.org:} \url{https://pasokh.org/}
+    \item \textbf{al-khoei.us:} \url{https://al-khoei.us/}
+    \item \textbf{pasokhgoo.ir:} \url{https://pasokhgoo.ir/}
+    \item \textbf{porsemanequran.com:} \url{http://porsemanequran.com/}
+    \item \textbf{islamqa.com:} \url{http://islamqa.com/}
+\end{itemize}
+
+\section{FAIR-RAG Pipeline Prompts}
+\label{sec:appendix-prompts}
+
+This appendix presents selected prompts that guide the behavior of the specialized agents within the FAIR-RAG pipeline. These prompts are provided to facilitate the reproducibility of our work and to serve as a practical resource for the research community exploring agentic and multi-step RAG architectures. Each prompt is designed to constrain the Language Model to perform a specific, well-defined task within the broader pipeline. Due to space constraints, we present condensed versions of the most critical prompts. The complete, unabridged prompts are available in our supplementary materials.
+
+\subsection{Query Validation Prompt (Condensed)}
+
+The following prompt validates the user's query for clarity, safety, and Islamic scope, then selects the most appropriate language model (SMALL, LARGE, or REASONER):
+
+\begin{small}
+\begin{verbatim}
+**Intent:** Determine if the user's question 
+is within the Islamic knowledge scope and 
+ethical guidelines, then assess its complexity 
+to select the appropriate model.
+
+**Rules:**
+- Ethical Boundaries: Reject harmful content
+- Islamic Scope: Questions anchored to Islamic 
+  personalities, concepts, or events are IN SCOPE
+- Model Selection: Default to LARGE unless 
+  extremely simple or requires complex reasoning
+
+Output one of: VALID_OBVIOUS, VALID_SMALL, 
+VALID_LARGE, VALID_REASONER, OUT_OF_SCOPE_ISLAMIC, 
+UNETHICAL
+\end{verbatim}
+\end{small}
+
+\subsection{Evidence Assessment Prompt (Condensed)}
+
+The Structured Evidence Assessment (SEA) agent analyzes evidence sufficiency:
+
+\begin{small}
+\begin{verbatim}
+**Role:** Strategic Intelligence Analyst
+
+**Process:**
+1. Mission Deconstruction: List required findings
+2. Intelligence Synthesis: Match evidence to 
+   required findings
+3. Final Assessment: Determine if sufficient
+
+Output JSON with: Main Goal, Required Findings, 
+Confirmed Findings, Remaining Gaps, and 
+Sufficient (Yes/No)
+\end{verbatim}
+\end{small}
+
+\subsection{Faithful Generation Prompt (Condensed)}
+
+The final generation prompt ensures faithful, safe, and responsible answers:
+
+\begin{small}
+\begin{verbatim}
+**Strict Rules:**
+1. Source-Based: All answers MUST be based only 
+   on provided evidence with citations [1], [2]
+2. Clarity: Provide comprehensive explanation 
+   synthesizing all relevant evidence
+3. Neutrality: Present multiple perspectives 
+   neutrally on controversial topics
+4. Fatwa Disclaimer: Never issue fatwas; include 
+   disclaimer for legal rulings
+5. Error Handling: Warn if evidence is incomplete
+
+Evidence: [numbered items with URLs]
+Original Question: {user_query}
+Output: [Persian answer with citations]
+\end{verbatim}
+\end{small}
+
+\section{Training Details}
+\label{sec:appendix-training}
+
+\subsection{Retriever Fine-tuning}
+
+To enhance retrieval performance, we fine-tuned a Persian language model on a specialized dataset of approximately 24,000 Islamic Q\&A triplets (query, positive context, negative context). The hyperparameters are detailed in Table~\ref{tab:retriever-hyperparams}.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{ll}
+\hline
+\textbf{Parameter} & \textbf{Value} \\
+\hline
+Base Model & PartAI/Tooka-SBERT \\
+Loss Function & MultipleNegativesRankingLoss \\
+Learning Rate & 2e-5 \\
+Epochs & 3 \\
+Batch Size & 15 \\
+Optimizer & AdamW \\
+\hline
+\end{tabular}
+\caption{Retriever fine-tuning hyperparameters.}
+\label{tab:retriever-hyperparams}
+\end{table}
+
+\section{Evaluation Methodology}
+\label{sec:appendix-evaluation}
+
+\subsection{LLM-as-Judge Prompts (Condensed)}
+
+Our evaluation framework employs specialized prompts for each quality dimension. Representative examples include:
+
+\textbf{Query Decomposition:} Evaluates sub-queries based on relevance, coverage, and efficiency (score 1-5).
+
+\textbf{Filter Efficacy:} Audits the document filter's precision and recall decisions against original filtering instructions.
+
+\textbf{Faithfulness:} Determines if the answer is ``Fully Faithful,'' ``Partially Faithful,'' or ``Not Faithful'' to the provided evidence.
+
+\textbf{Answer Correctness:} Evaluates both relevance (how well the answer addresses the question) and correctness (factual accuracy compared to ground truth) on a 1-5 scale.
+
+\textbf{Negative Rejection:} Verifies if the system correctly refused to answer out-of-domain questions.
+
+\textbf{Iterative Improvement:} Ranks answers from iterations 1-4 to measure progressive quality gains.
+
+\subsection{Judge Model Reliability}
+
+The reliability of Llama-4-Maverick-17B as our judge was validated through human expert evaluation of 100 samples across various component-level tasks, achieving 94\% agreement with human judgments.
+
+\section{Cost and Latency Calculations}
+\label{sec:appendix-metrics}
+
+\subsection{Latency Measurement}
+
+End-to-end latency was decomposed into: (1) model computation, (2) API overhead, and (3) retrieval orchestration. Based on empirical measurements with a 90:10 input:output token ratio, we derived a normalized latency of \textbf{2.21 ms per token}. The breakdown shows approximately 84\% from model computation, 12\% from API communication, and 4\% from retrieval processes.
+
+\subsection{Cost Calculation}
+
+Costs are calculated using DeepInfra's Q4 2025 pricing:
+\begin{itemize}
+    \item \textbf{Small Model:} \$0.033/Mtok (blended)
+    \item \textbf{Large Model:} \$0.247/Mtok (blended)
+    \item \textbf{Reasoner Model:} \$0.870/Mtok (blended)
+    \item \textbf{FARSIQA (Dynamic):} \$0.246/Mtok (80\% Large, 15\% Small, 5\% Reasoner)
+\end{itemize}
+
+The blended rate accounts for a 90:10 input:output token ratio typical in RAG systems.
+
+\section{Failure Mode Analysis Prompt}
+\label{sec:appendix-failure}
+
+Our failure analysis employs a structured LLM-assisted methodology. The prompt establishes the model as a RAG diagnostician and requires classification into six failure categories: Query Decomposition Error, Retrieval Failure, Evidence Filtering Error, SEA Error, Query Refinement Error, or Generation Failure. For each failed query, the complete execution trace is analyzed to identify the primary bottleneck with reasoning, root cause analysis, and suggested improvements. This hybrid human-AI approach provides actionable insights into system limitations.
 
 \end{document}
