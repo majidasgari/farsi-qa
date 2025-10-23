@@ -541,14 +541,21 @@ The Static Large configuration achieves the highest faithfulness at 65.6\%. Howe
 The efficiency data provides the most decisive justification for our dynamic strategy, establishing a clear superiority in cost-performance. An analysis across all configurations reveals the following:
 
 \begin{itemize}
-\item \textbf{Static Reasoner: Prohibitively Expensive and Impractical.} This configuration is financially unviable for any practical deployment. Its per-query cost is \textbf{over an order of magnitude (11.8x) higher} than our dynamic system. This extreme expense is coupled with an unusable average latency of 77.9 seconds, which is \textbf{3.5 times slower} than our approach.
+\item \textbf{Static Reasoner: Prohibitively Expensive and Impractical.} This configuration is financially unviable for any practical deployment. Its per-query cost is \textbf{over an order of magnitude (11.8x) higher} than our dynamic system. This extreme expense is coupled with an unusable average latency of 77.9 seconds, which is \textbf{3.5 times slower} than our approach. The high answer correctness score cannot justify these prohibitive operational costs and delays.
 
-\item \textbf{Static Small: A False Economy.} While being the cheapest option in absolute terms, this system represents a classic false economy. Its low cost is rendered irrelevant by its extremely \textbf{poor performance across all quality metrics}. Furthermore, it is surprisingly inefficient in terms of time, with a \textbf{38\% higher latency} than our dynamic system.
+\item \textbf{Static Small: A False Economy.} While being the cheapest option in absolute terms, this system represents a classic false economy. Its low cost is rendered irrelevant by its extremely \textbf{poor performance across all quality metrics}. Furthermore, it is surprisingly inefficient in terms of time, with a \textbf{38\% higher latency} than our dynamic system, likely due to repeated reasoning failures and the need for additional internal processing to compensate for its limited capabilities.
 
-\item \textbf{Static Large vs. FARSIQA (Dynamic): The Optimal Trade-off.} Our dynamic system achieves its superior and more robust performance profile while being \textbf{approximately 13\% more cost-effective} per query (2.51e-3 vs. 2.89e-3). This translates to significant savings at scale.
+\item \textbf{Static Large vs. FARSIQA (Dynamic): The Optimal Trade-off.} The most critical comparison is against the Static Large system, where FARSIQA's intelligent design becomes evident.
+  \begin{itemize}
+    \item \textbf{Cost-Effectiveness:} Our dynamic system achieves its superior and more robust performance profile (including its best-in-class 97.0\% Negative Rejection rate) while being \textbf{approximately 13\% more cost-effective} per query (2.51e-3 vs. 2.89e-3). This translates to significant savings at scale.
+    \item \textbf{Token and API Efficiency:} Both systems exhibit nearly identical efficiency in API calls (6.07) and token consumption (Dynamic: 11,863 vs. Large: 11,681), confirming that dynamic routing does not introduce computational overhead.
+    \item \textbf{Latency Trade-off:} The Static Large configuration is marginally faster by only 0.34 seconds. This statistically negligible 1.5\% difference in latency is a minimal price to pay for the additional safeguards delivered by the dynamic system.
+  \end{itemize}
 \end{itemize}
 
 This establishes a clear value proposition: our dynamic system exchanges a negligible increase in latency for a \textbf{significant gain in functional robustness \emph{and} a tangible 13\% reduction in operational cost}. This makes it the unequivocally superior choice for a scalable, effective, and financially sustainable system.
+
+	extbf{Conclusion on Optimal Configuration:} This analysis confirms the success of our dynamic LLM allocation strategy. It achieves a state-of-the-art performance profile that is statistically comparable to, and in several aspects superior to, systems that rely exclusively on large or reasoner models. By balancing performance, financial cost, and latency, the dynamic configuration delivers near-optimal quality without the financial overhead of the Static Large system or the prohibitive expense and latency associated with the specialist model.
 
 \subsection{Component-Level Performance Analysis}
 
