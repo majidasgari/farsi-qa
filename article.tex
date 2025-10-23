@@ -1,5 +1,7 @@
-% This must be in the first 5 lines to tell arXiv to use pdfLaTeX, which is strongly recommended.
-\pdfoutput=1
+% This must be in the first 5 lines to tell arXiv to use pdfLaTeX when relevant.
+\ifdefined\pdfoutput
+  \pdfoutput=1
+\fi
 % In particular, the hyperref package requires pdfLaTeX in order to break URLs across lines.
 
 \documentclass[11pt]{article}
@@ -17,9 +19,6 @@
 % \usepackage[T5]{fontenc}
 % See https://www.latex-project.org/help/documentation/encguide.pdf for other character sets
 
-% This assumes your files are encoded as UTF8
-\usepackage[utf8]{inputenc}
-
 % This is not strictly necessary and may be commented out.
 % However, it will improve the layout of the manuscript,
 % and will typically save some space.
@@ -32,6 +31,16 @@
 
 % For including images
 \usepackage{graphicx}
+
+% Support Persian/English bilingual snippets (requires XeLaTeX)
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setmainlanguage{english}
+\setotherlanguage{farsi}
+\newfontfamily\persianfont[Script=Arabic]{Amiri}
+\newfontfamily\iranianfont[Script=Arabic]{Amiri}
+\newfontfamily\arabicfont[Script=Arabic]{Amiri}
+\newcommand{\fa}[1]{\textfarsi{#1}}
 
 % If the title and author information does not fit in the area allocated, uncomment the following
 %
@@ -61,7 +70,7 @@
   Affiliation / Address line 1 \\
   Affiliation / Address line 2 \\
   Affiliation / Address line 3 \\
-  \texttt{email@domain} \\\And
+  	exttt{email@domain} \\\and
   Second Author \\
   Affiliation / Address line 1 \\
   Affiliation / Address line 2 \\
@@ -144,7 +153,7 @@ To prepare the raw text for efficient retrieval, we implemented a systematic pre
 
 \begin{itemize}
     \item For encyclopedic articles, the main textual content was extracted, and a recursive chunking strategy was applied. The text was first split by paragraphs to maintain semantic cohesion. Paragraphs exceeding a predefined length were then further subdivided into sentences.
-    \item For the Q\&A data, the expert's answer was similarly chunked. To preserve the crucial link between the question and its corresponding answer, the original user question was prepended to each answer chunk. We used special markers to clearly delineate the two parts for the downstream LLM: ``User Question'' and ``Expert Answer''.
+  \item For the Q\&A data, the expert's answer was similarly chunked. To preserve the crucial link between the question and its corresponding answer, the original user question was prepended to each answer chunk. We used bilingual markers to clearly delineate the two parts for the downstream LLM: ``\fa{(سوال کاربر):}'' / ``(User Question:)'' and ``\fa{(پاسخ کارشناس):}'' / ``(Expert Answer:)''.
 \end{itemize}
 
 All text segments were processed to a maximum length of \textbf{378 tokens}, empirically chosen to balance retrieval efficiency and context completeness based on ParsBERT's architecture. \cite{Farahani_2021} This chunking accounts for Persian morphological complexities, ensuring semantic integrity. This process yielded a final knowledge base of approximately \textbf{1.7 million text chunks}, each representing a searchable unit of information.
@@ -202,9 +211,9 @@ Recognizing that real-world QA systems must handle a variety of query types, we 
 
 \begin{itemize}
     \item \textbf{Multi-hop Questions (500 samples):} Multi-hop questions drawn directly from the IslamicPCQA dataset that require reasoning over multiple pieces of evidence.
-    \item \textbf{Negative Rejection Questions (100 samples):} Manually authored out-of-domain or unanswerable questions (e.g., ``What is the meaning of the flag of Japan?'') designed to test the system's ability to gracefully refuse to answer when the knowledge base lacks relevant information.
+  \item \textbf{Negative Rejection Questions (100 samples):} Manually authored out-of-domain or unanswerable questions (e.g., ``\fa{معنی پرچم ژاپن چیست؟}'' / ``What is the meaning of the flag of Japan?'') designed to test the system's ability to gracefully refuse to answer when the knowledge base lacks relevant information.
     \item \textbf{Noisy Context Questions (100 samples):} Multi-hop questions where the retrieved context is intentionally polluted with irrelevant ``distractor'' documents. This tests the system's robustness and its ability to identify and ignore non-pertinent information.
-    \item \textbf{Obvious Questions (100 samples):} Simple, factoid questions for which the answer should be common knowledge within the domain (e.g., ``How many rak'ahs is the traveler's prayer?''). These are used to ensure the system handles simple queries correctly.
+  \item \textbf{Obvious Questions (100 samples):} Simple, factoid questions for which the answer should be common knowledge within the domain (e.g., ``\fa{نماز مسافر چند رکعت است؟}'' / ``How many rak'ahs is the traveler's prayer?''). These are used to ensure the system handles simple queries correctly.
 \end{itemize}
 
 Each sample in our final evaluation dataset is structured with a question, a ground-truth answer, and category-specific metadata, providing a robust framework for the multi-faceted evaluation detailed in Section~5.
@@ -254,7 +263,7 @@ Valid queries are categorized by complexity (VALID\_OBVIOUS, VALID\_SMALL, VALID
 
 \subsubsection{Query Decomposition}
 
-For queries proceeding to the RAG pipeline, a specialized LLM agent decomposes the original question into a set of simpler, semantically distinct sub-queries (max 4). This step is critical for complex, multi-faceted, or comparative questions. For example, a complex query about Islamic scholars' contributions to medicine and astronomy during the Islamic Golden Age and their influence on the European Renaissance would be decomposed into focused sub-queries like ``Medical innovations by Islamic scholars such as Avicenna and Rhazes,'' ``Astronomical advancements in Islamic observatories,'' and ``The transmission of Islamic scientific knowledge to Europe.'' This decomposition strategy significantly enhances retrieval recall by ensuring that all facets of the original question are targeted during the search phase. \cite{fairrag} This task is guided by a structured prompt (see Appendix B for details).
+For queries proceeding to the RAG pipeline, a specialized LLM agent decomposes the original question into a set of simpler, semantically distinct sub-queries (max 4). This step is critical for complex, multi-faceted, or comparative questions. For example, consider the Persian query ``\fa{سهم عمده دانشمندان اسلامی در پزشکی و نجوم در دوران طلایی اسلام چه بود و تأثیر آنها بر رنسانس اروپا چه بود؟}'' (``What were the major contributions of Islamic scholars to medicine and astronomy during the Islamic Golden Age, and what was their influence on the European Renaissance?''). FAIR-RAG decomposes it into focused sub-queries such as ``\fa{نوآوری‌های پزشکی توسط دانشمندان اسلامی مانند ابن سینا و رازی}'' (``Medical innovations by Islamic scholars such as Avicenna and Rhazes''), ``\fa{پیشرفت‌های نجومی در رصدخانه‌های اسلامی}'' (``Astronomical advancements in Islamic observatories''), and ``\fa{انتقال دانش علمی اسلامی به اروپا}'' (``The transmission of Islamic scientific knowledge to Europe''). This decomposition strategy significantly enhances retrieval recall by ensuring that all facets of the original question are targeted during the search phase. \cite{fairrag} This task is guided by a structured prompt (see Appendix B for details).
 
 \subsection{Phase 2: Hybrid Retrieval and Re-ranking}
 
@@ -613,7 +622,7 @@ When the system determines that the current evidence is insufficient and trigger
 
 To demonstrate the unique advantages of the FARSIQA, we analyze a hybrid comparative, multi-hop query from the Islamic domain. This type of query is particularly challenging because it requires the system to conduct two parallel lines of multi-hop reasoning and then synthesize the results into a coherent comparison.
 
-\textbf{The query is:} ``Compare the burial place of the Prophet who was swallowed by a whale with the city where the Prophet who built the Kaaba was born.''
+	extbf{The query is:} ``\fa{محل دفن پیامبری که توسط نهنگ بلعیده شد را با شهری که پیامبری که کعبه را ساخت در آن متولد شد، مقایسه کنید.}'' (``Compare the burial place of the Prophet who was swallowed by a whale with the city where the Prophet who built the Kaaba was born.'')
 
 \textbf{Why This Query is Difficult for Standard RAG Frameworks:}
 
@@ -626,13 +635,13 @@ A standard RAG system would likely fail because it treats the query as a single,
   \begin{itemize}
   \item \textbf{Adaptive Sub-Queries:} FAIR-RAG's first action is to decompose the comparative query into two distinct, parallel investigative tracks:
     \begin{itemize}
-    \item Track A: [``burial place of the Prophet swallowed by a whale'']
-    \item Track B: [``birth city of the Prophet who built the Kaaba'']
+  \item Track A: [``\fa{محل دفن پیامبری که توسط نهنگ بلعیده شد}''] (``burial place of the Prophet swallowed by a whale'')
+  \item Track B: [``\fa{زادگاه پیامبری که کعبه را ساخت}''] (``birth city of the Prophet who built the Kaaba'')
     \end{itemize}
   \item \textbf{Retrieved Evidence:} The system retrieves initial evidence for both tracks concurrently:
     \begin{itemize}
-    \item Evidence 1: \emph{``Prophet Yunus (Jonah) is the prophet who was famously swallowed by a large fish (or whale) as a trial from God. After being saved, he returned to his people to preach.''}
-    \item Evidence 2: \emph{``Prophet Ibrahim (Abraham), with the help of his son Ismail, is credited with constructing the foundations of the Kaaba in Mecca as a house of worship for God.''}
+  \item Evidence 1: \emph{``\fa{حضرت یونس پیامبری است که به عنوان آزمایشی از سوی خدا توسط یک ماهی بزرگ (یا نهنگ) بلعیده شد و پس از نجات به میان قوم خود بازگشت تا دعوت الهی را ادامه دهد.}''} (\emph{``Prophet Yunus (Jonah) is the prophet who was famously swallowed by a large fish (or whale) as a trial from God. After being saved, he returned to his people to preach.''})
+  \item Evidence 2: \emph{``\fa{حضرت ابراهیم (ع) به همراه پسرش اسماعیل پایه‌های کعبه را در مکه بنا نهاد تا خانه‌ای برای عبادت خدا باشد.}''} (\emph{``Prophet Ibrahim (Abraham), with the help of his son Ismail, is credited with constructing the foundations of the Kaaba in Mecca as a house of worship for God.''})
     \end{itemize}
   \item \textbf{Structured Evidence Assessment (SEA):}
     \begin{itemize}
@@ -645,13 +654,13 @@ A standard RAG system would likely fail because it treats the query as a single,
   \begin{itemize}
   \item \textbf{Refined Queries:} The refinement module now uses the entities identified in Iteration 1 to generate new, highly-focused queries for each track:
     \begin{itemize}
-    \item Refined Query A: [``tomb of Prophet Yunus'']
-    \item Refined Query B: [``birthplace of Prophet Ibrahim'']
+  \item Refined Query A: [``\fa{آرامگاه حضرت یونس}''] (``tomb of Prophet Yunus'')
+  \item Refined Query B: [``\fa{زادگاه حضرت ابراهیم}''] (``birthplace of Prophet Ibrahim'')
     \end{itemize}
   \item \textbf{Retrieved Evidence:} The new targeted queries retrieve the final missing pieces of information:
     \begin{itemize}
-    \item Evidence 3: \emph{``The traditional site of the tomb of Prophet Yunus is located on a hill in the ancient city of Nineveh, which is near modern-day Mosul, Iraq.''}
-    \item Evidence 4: \emph{``Historical and religious sources indicate that Prophet Ibrahim was born in the ancient city of Ur of the Chaldees, located in what is now southern Iraq.''}
+  \item Evidence 3: \emph{``\fa{محل سنتی آرامگاه حضرت یونس بر روی تپه‌ای در شهر باستانی نینوا، نزدیک موصل امروزی در عراق، قرار دارد.}''} (\emph{``The traditional site of the tomb of Prophet Yunus is located on a hill in the ancient city of Nineveh, which is near modern-day Mosul, Iraq.''})
+  \item Evidence 4: \emph{``\fa{منابع تاریخی و مذهبی نشان می‌دهند که حضرت ابراهیم در شهر باستانی اور کلدانیان در جنوب عراق کنونی متولد شده است.}''} (\emph{``Historical and religious sources indicate that Prophet Ibrahim was born in the ancient city of Ur of the Chaldees, located in what is now southern Iraq.''})
     \end{itemize}
   \item \textbf{Structured Evidence Assessment (SEA):}
     \begin{itemize}
@@ -661,18 +670,18 @@ A standard RAG system would likely fail because it treats the query as a single,
   \end{itemize}
 
 \item \textbf{Final Faithful Generation:}
-The system synthesizes the evidence from both parallel tracks into a single, structured, and fully-grounded comparative answer: ``The burial place of the Prophet who was swallowed by a whale and the birth city of the Prophet who built the Kaaba are both located in modern-day Iraq. The Prophet swallowed by a whale was \textbf{Yunus} [1], and his tomb is located in the ancient city of \textbf{Nineveh (near Mosul)} [3]. The Prophet who built the Kaaba was \textbf{Ibrahim} [2], who was born in the ancient city of \textbf{Ur} [4].''
+The system synthesizes the evidence from both parallel tracks into a single, structured, and fully-grounded comparative answer: ``\fa{محل دفن پیامبری که توسط نهنگ بلعیده شد و شهر زادگاه پیامبری که کعبه را ساخت، هر دو در عراق امروزی قرار دارند.} \textbf{\fa{حضرت یونس}} [1] \fa{در شهر باستانی} \textbf{\fa{نینوا (نزدیک موصل)}} [3] \fa{به خاک سپرده شده است، و} \textbf{\fa{حضرت ابراهیم}} [2] \fa{در شهر باستانی} \textbf{\fa{اور}} [4] \fa{به دنیا آمد.}'' (``The burial place of the Prophet who was swallowed by a whale and the birth city of the Prophet who built the Kaaba are both located in modern-day Iraq. The Prophet swallowed by a whale was \textbf{Yunus} [1], and his tomb is located in the ancient city of \textbf{Nineveh (near Mosul)} [3], while the Prophet who built the Kaaba was \textbf{Ibrahim} [2], who was born in the ancient city of \textbf{Ur} [4].'')
 \end{itemize}
 
 This case study highlights FAIR-RAG's key architectural advantage: its ability to systematically decompose a complex goal into parallel sub-problems and then apply iterative refinement to solve each one before synthesizing a comprehensive final answer. This structured, multi-threaded reasoning process is what enables it to succeed where other advanced RAG frameworks may fail.
 
 \subsection{Failure Mode Analysis}
 
-To move beyond aggregate performance metrics and gain a deeper, qualitative understanding of FARSIQA's limitations, we conducted a rigorous failure mode analysis. This process adopted a hybrid human-AI methodology, using an advanced LLM judge for initial categorization, followed by meticulous expert human validation. We analyzed a comprehensive set of 122 unique underperforming queries from our test set.
+To move beyond aggregate performance metrics and gain a deeper, qualitative understanding of FARSIQA's limitations, we conducted a rigorous failure mode analysis. This process adopted a hybrid human-AI methodology, using an advanced LLM judge for initial categorization, followed by meticulous expert human validation. We analyzed a comprehensive set of 122 unique underperforming queries from our test set. For each failure case, we supplied the complete execution trace (including intermediate agent outputs) to the judge, which was guided by a detailed taxonomy and structured prompt (Appendix~\ref{sec:appendix-failure}). Human reviewers then audited every prediction to ensure contextual fidelity before final labeling.
 
-The overall results of this analysis are visualized in Figure~\ref{fig:failure-modes}. The distribution of primary error modes reveals that while failures occur across the pipeline, they are heavily concentrated in the final two stages. Generation Failures emerged as the most dominant error category, accounting for a significant majority of all cases (54.9\%). This was followed by Retrieval Failures at 27.9\%, indicating that finding the correct information and correctly synthesizing it are the two primary challenges.
+The overall results of this analysis are visualized in Figure~\ref{fig:failure-modes}. The distribution of primary error modes reveals that while failures occur across the pipeline, they are heavily concentrated in the final two stages. Generation Failures emerged as the most dominant error category, accounting for a significant majority of all cases (54.9\%). Retrieval Failures were the second most common at 27.9\%. Errors in the upstream control flow were comparatively rare: Query Decomposition Errors accounted for 9.0\%, Evidence Filtering Errors for 5.7\%, and Structured Evidence Assessment (SEA) Errors for 2.5\%. Notably, we observed no instances of Query Refinement Error, indicating that once an information gap is surfaced, the refinement module generally succeeds in targeting it.
 
-\textbf{Generation Failures (54.9\%):} Representing over half of all errors, this category is unequivocally the primary bottleneck in the FARSIQA architecture. These failures occur when the system successfully retrieves and filters the correct evidentiary documents but fails to synthesize them into a factually accurate answer. We identified several recurring root causes:
+\paragraph{Generation Failures (54.9\%).} Representing over half of all errors, this category is unequivocally the primary bottleneck in the FARSIQA architecture. These failures occur when the system successfully retrieves and filters the correct evidentiary documents but fails to synthesize them into a factually accurate answer. We identified several recurring root causes:
 
 \begin{itemize}
 \item \textbf{Flawed Logical Inference:} The model struggles with reasoning tasks that require understanding implicit relationships, particularly with cyclical concepts or complex relational chains.
@@ -681,9 +690,13 @@ The overall results of this analysis are visualized in Figure~\ref{fig:failure-m
 \item \textbf{Ignoring Correct Evidence:} In cases with conflicting or noisy evidence, the model sometimes grounds its answer on an incorrect document while ignoring the document containing the correct information.
 \end{itemize}
 
-\textbf{Retrieval Failures (27.9\%):} As the second-largest category, these errors represent a fundamental inability to source the required information from the knowledge base. The predominant cause was identified as Knowledge Base Gaps, where information for highly specific, long-tail queries was entirely absent from the corpus.
+\paragraph{Retrieval Failures (27.9\%).} As the second-largest category, these errors represent a fundamental inability to source the required information from the knowledge base. The predominant cause was Knowledge Base Gaps, where information for highly specific, long-tail queries was entirely absent from the corpus. A secondary contributor was the occasional generation of ineffective sub-queries that were too general to isolate the required fact, especially for nuanced historical details.
 
-In summary, this comprehensive failure analysis reveals that FARSIQA's primary vulnerability lies not in its ability to find information, but in its capacity to reason over and faithfully synthesize it. The overwhelming prevalence of Generation Failures highlights the final language model as the most critical area for future research.
+\paragraph{Query Decomposition Errors (9.0\%).} These initial-stage failures arose when the system misunderstood the semantic intent of the user's request. The primary root cause was an inability to correctly parse compound relational constraints (for example, ordinal relationships such as ``the third son of...''), leading to overly broad or misdirected sub-queries that derailed downstream retrieval.
+
+\paragraph{Evidence Filtering \& SEA Errors (8.2\% combined).} Intermediate-stage errors were relatively infrequent, suggesting that the pipeline's control flow is generally robust. Filtering errors largely stemmed from over-aggressive pruning that discarded a relevant document. SEA errors reflected premature sufficiency judgments, where the loop terminated before all checklist items had supporting evidence.
+
+In summary, this comprehensive failure analysis reveals that FARSIQA's primary vulnerability lies not in its ability to find information, but in its capacity to reason over and faithfully synthesize it. The overwhelming prevalence of Generation Failures highlights the final language model as the most critical area for future research. While improving knowledge base coverage can mitigate retrieval issues, the most substantial gains are likely to come from enhancing the generator's evidence adherence and complex reasoning capabilities.
 
 \begin{figure*}[t]
 \centering
