@@ -12,6 +12,9 @@
 % Standard package includes
 \usepackage{times}
 \usepackage{latexsym}
+\usepackage{mathtools}
+\usepackage{fvextra}
+\DefineVerbatimEnvironment{PromptBlock}{Verbatim}{fontsize=\small,breaklines=true,breakanywhere=true,formatcom=\promptfont}
 
 % For proper rendering and hyphenation of words containing Latin characters (including in bib files)
 \usepackage[T1]{fontenc}
@@ -40,6 +43,7 @@
 \newfontfamily\persianfont[Script=Arabic]{Amiri}
 \newfontfamily\iranianfont[Script=Arabic]{Amiri}
 \newfontfamily\arabicfont[Script=Arabic]{Amiri}
+\newfontfamily\promptfont[Script=Arabic]{Amiri}
 \newcommand{\fa}[1]{\textfarsi{#1}}
 
 % If the title and author information does not fit in the area allocated, uncomment the following
@@ -564,7 +568,7 @@ The efficiency data provides the most decisive justification for our dynamic str
 
 This establishes a clear value proposition: our dynamic system exchanges a negligible increase in latency for a \textbf{significant gain in functional robustness \emph{and} a tangible 13\% reduction in operational cost}. This makes it the unequivocally superior choice for a scalable, effective, and financially sustainable system.
 
-	extbf{Conclusion on Optimal Configuration:} This analysis confirms the success of our dynamic LLM allocation strategy. It achieves a state-of-the-art performance profile that is statistically comparable to, and in several aspects superior to, systems that rely exclusively on large or reasoner models. By balancing performance, financial cost, and latency, the dynamic configuration delivers near-optimal quality without the financial overhead of the Static Large system or the prohibitive expense and latency associated with the specialist model.
+  \textbf{Conclusion on Optimal Configuration:} This analysis confirms the success of our dynamic LLM allocation strategy. It achieves a state-of-the-art performance profile that is statistically comparable to, and in several aspects superior to, systems that rely exclusively on large or reasoner models. By balancing performance, financial cost, and latency, the dynamic configuration delivers near-optimal quality without the financial overhead of the Static Large system or the prohibitive expense and latency associated with the specialist model.
 
 \subsection{Component-Level Performance Analysis}
 
@@ -622,7 +626,7 @@ When the system determines that the current evidence is insufficient and trigger
 
 To demonstrate the unique advantages of the FARSIQA, we analyze a hybrid comparative, multi-hop query from the Islamic domain. This type of query is particularly challenging because it requires the system to conduct two parallel lines of multi-hop reasoning and then synthesize the results into a coherent comparison.
 
-	extbf{The query is:} ``\fa{محل دفن پیامبری که توسط نهنگ بلعیده شد را با شهری که پیامبری که کعبه را ساخت در آن متولد شد، مقایسه کنید.}'' (``Compare the burial place of the Prophet who was swallowed by a whale with the city where the Prophet who built the Kaaba was born.'')
+  \textbf{The query is:} ``\fa{محل دفن پیامبری که توسط نهنگ بلعیده شد را با شهری که پیامبری که کعبه را ساخت در آن متولد شد، مقایسه کنید.}'' (``Compare the burial place of the Prophet who was swallowed by a whale with the city where the Prophet who built the Kaaba was born.'')
 
 \textbf{Why This Query is Difficult for Standard RAG Frameworks:}
 
@@ -819,74 +823,458 @@ This section lists the Q\&A platforms, which primarily contain collections of qu
 \section{FAIR-RAG Pipeline Prompts}
 \label{sec:appendix-prompts}
 
-This appendix presents selected prompts that guide the behavior of the specialized agents within the FAIR-RAG pipeline. These prompts are provided to facilitate the reproducibility of our work and to serve as a practical resource for the research community exploring agentic and multi-step RAG architectures. Each prompt is designed to constrain the Language Model to perform a specific, well-defined task within the broader pipeline. Due to space constraints, we present condensed versions of the most critical prompts. The complete, unabridged prompts are available in our supplementary materials.
+This appendix presents the complete prompts that steer each agent in the FAIR-RAG pipeline. We reproduce the exact instructions used in our implementation to facilitate replication and downstream analysis. Every prompt is intentionally verbose, as the formatting (including Markdown markers and explicit examples) materially affects model behavior.
 
-\subsection{Query Validation Prompt (Condensed)}
+\subsection{Query Validation and Dynamic Model Selection Prompt}
 
-The following prompt validates the user's query for clarity, safety, and Islamic scope, then selects the most appropriate language model (SMALL, LARGE, or REASONER):
+The initial validation agent uses the following prompt to verify scope and ethics before selecting the appropriate model size for downstream execution.
 
-\begin{small}
-\begin{verbatim}
-**Intent:** Determine if the user's question 
-is within the Islamic knowledge scope and 
-ethical guidelines, then assess its complexity 
-to select the appropriate model.
+\begin{PromptBlock}
+VALIDATE_QUERY_SCOPE_AND_ETHICS_PROMPT = """
 
-**Rules:**
-- Ethical Boundaries: Reject harmful content
-- Islamic Scope: Questions anchored to Islamic 
-  personalities, concepts, or events are IN SCOPE
-- Model Selection: Default to LARGE unless 
-  extremely simple or requires complex reasoning
+**Situation:** A user has submitted a question to an Islamic Question Answering System.
 
-Output one of: VALID_OBVIOUS, VALID_SMALL, 
-VALID_LARGE, VALID_REASONER, OUT_OF_SCOPE_ISLAMIC, 
-UNETHICAL
-\end{verbatim}
-\end{small}
+**Intent:**
 
-\subsection{Evidence Assessment Prompt (Condensed)}
+1. Determine if the user's question is within the system's Islamic knowledge scope and adheres to general ethical guidelines.
 
-The Structured Evidence Assessment (SEA) agent analyzes evidence sufficiency:
+2. If the question is valid, assess its complexity and determine the most appropriate language model (SMALL, LARGE, or REASONER) to process it, with a strong preference for the LARGE model.
 
-\begin{small}
-\begin{verbatim}
-**Role:** Strategic Intelligence Analyst
+**Scaffolding:**
 
-**Process:**
-1. Mission Deconstruction: List required findings
-2. Intelligence Synthesis: Match evidence to 
-   required findings
-3. Final Assessment: Determine if sufficient
+You are provided with the user's question, rules for scope/ethics, and guidelines for model selection.
 
-Output JSON with: Main Goal, Required Findings, 
-Confirmed Findings, Remaining Gaps, and 
-Sufficient (Yes/No)
-\end{verbatim}
-\end{small}
+Analyze the question and classify it by outputting ONLY one of the following exact labels after "Selected Label:":
 
-\subsection{Faithful Generation Prompt (Condensed)}
+- "VALID_OBVIOUS": If the question is related to Islamic knowledge, is ethical, AND is so obvious that the model can confidently answer it without retrieval, purely from general common knowledge (e.g., "قبله مسلمانان به کدام سمت است؟", "ماه رمضان چند روز است؟").
 
-The final generation prompt ensures faithful, safe, and responsible answers:
+[Translate: (e.g., "In which direction do Muslims face during prayer (Qibla)?", "How many days does the month of Ramadan last?").]
 
-\begin{small}
-\begin{verbatim}
-**Strict Rules:**
-1. Source-Based: All answers MUST be based only 
-   on provided evidence with citations [1], [2]
-2. Clarity: Provide comprehensive explanation 
-   synthesizing all relevant evidence
-3. Neutrality: Present multiple perspectives 
-   neutrally on controversial topics
-4. Fatwa Disclaimer: Never issue fatwas; include 
-   disclaimer for legal rulings
-5. Error Handling: Warn if evidence is incomplete
+- "VALID_SMALL": If the question is related to Islamic knowledge, is ethical, AND is very simple (e.g., direct factual recall like "فرق بین نمازهای واجب (فرض) و مستحب (سنت) چیست؟").
 
-Evidence: [numbered items with URLs]
-Original Question: {user_query}
-Output: [Persian answer with citations]
-\end{verbatim}
-\end{small}
+[Translate: (e.g., direct factual recall like "What is the difference between obligatory (Fard) and recommended (Sunnah) prayers?").]
+
+- "VALID_LARGE": If the question is related to Islamic knowledge, is ethical, AND requires explanation, interpretation, comparison, or nuanced understanding. THIS IS THE PREFERRED DEFAULT for most valid questions (e.g., "توضیح مفهوم توحید در قرآن.", "تفاوت بین حدیث صحیح و ضعیف چیست؟").
+
+[Translate: (e.g., "Explain the concept of Tawhid (the oneness of God) in the Qur'an.", "What is the difference between a Sahih (authentic) and a Da'if (weak) Hadith?").]
+
+- "VALID_REASONER": If the question is related to Islamic knowledge, is ethical, AND specifically requires multi-step logical deduction, complex rule application, or mathematical calculations based on Islamic principles (e.g., "شخصی فوت کرده و یک همسر، دو پسر و یک دختر دارد. اگر ماترک او ۱۲۰ سکه طلا باشد، سهم‌الارث هر یک چقدر است؟"). Use this very sparingly.
+
+[Translate: (e.g., "A person passed away leaving behind a spouse, two sons, and a daughter. If the estate amounts to 120 gold coins, what is the inheritance share of each heir?"). Use this very sparingly.]
+
+- "OUT_OF_SCOPE_ISLAMIC": If the question is ethical and has **no anchor** to any specific Islamic personality, book, concept, or event (e.g., "How to configure a router?").
+
+- "UNETHICAL": If the question conflicts with general ethical guidelines or promotes harmful content.
+
+**Rules for Classification:**
+
+1.  **Ethical Boundaries:**
+    - Do NOT process questions that conflict with general ethical guidelines or promote harmful content.
+
+2. **Islamic Scope (Coverage of Response):**
+    - **This is the most important rule: If the question is anchored to a specific Islamic personality, book, concept, historical event, or place, it MUST be considered IN SCOPE.**
+    - Only reject questions that have absolutely no connection to Islamic knowledge, history, civilization, culture, or related fields.
+    - **Hybrid Questions Example:** A query like "مولف کتاب حقيقة مصحف فاطمة عند الشيعة مدرک دکتری در چه رشته ای دریافت کرد؟" (What PhD did the author of 'The Truth of Mushaf Fatima' receive?) **MUST be classified as "VALID_LARGE"**. Even though it asks about an academic degree (a general knowledge fact), it is anchored to a specific Islamic author and book, making it valid.
+
+3. **Model Selection Preference:**
+   - **Default to "VALID_LARGE"** for any valid Islamic question unless it's extremely simple or explicitly requires complex reasoning/calculation.
+   - Use "VALID_SMALL" only if the question is exceptionally straightforward and requires minimal processing.
+   - Use "VALID_REASONER" only if the question cannot be adequately addressed by a standard large model and distinctly involves step-by-step calculations or complex logical chaining (like inheritance).
+
+**User Question:** "{user_query}"
+
+**Constraints:**
+
+- Respond with ONLY one of the six labels listed above.
+- Do not provide any explanations or additional text.
+- The label MUST be on a new line after "Selected Label:".
+
+**Output:**
+
+Selected Label: """
+\end{PromptBlock}
+
+\subsection{Query Decomposition Prompt}
+
+This agent decomposes complex questions into focused retrieval targets. The explicit worked example included in the prompt proved critical for consistent behavior across model checkpoints.
+
+\begin{PromptBlock}
+PROCESS_USER_QUERY_PROMPT = """
+
+**Situation:** You are an expert query analyst for an Islamic knowledge Question-Answering system. A user has asked a question that might be complex, comparative, or multi-faceted. Your task is to decompose this question into a set of precise, meaningful, and distinct sub-queries to ensure the retrieval system can find comprehensive and accurate evidence from a database.
+
+**Intent:** Decompose the original user question into its core semantic components. Transform these components into short, keyword-rich, and meaningful search phrases in Persian. The goal is to generate queries that, when searched, will collectively **cover all aspects of the original question**.
+
+**Scaffolding:**
+
+First, understand the principles of effective decomposition:
+
+1.  **Identify Distinct Concepts:** Separate the main subjects, actions, conditions, and comparisons in the query.
+2.  **Use Synonyms & Related Terms:** Think about different ways a concept might be phrased in the database (e.g., "The term 'interaction' can be searched as 'cooperation' or 'relationship'.").
+3.  **Create Meaningful Phrases:** Instead of single keywords, generate short phrases that preserve the context of the sub-question.
+4.  **Cover All Angles:** Ensure every part of the original question is represented by at least one sub-query.
+
+Now, study the following example carefully to understand how to apply these principles.
+
+--- EXAMPLE ---
+
+**Original User Query:** "متفکران اسلامی در طول تاریخ چگونه مفهوم عدالت در قرآن را تفسیر کرده و آن را در حکومت به کار برده‌اند؟"
+
+[Translate: "How have Islamic thinkers historically interpreted the concept of justice in the Quran and applied it to governance?"]
+
+**Rationale/Analysis (This is your thought process):**
+
+The question contains two primary components:
+
+1. تفسیر عدالت در قرآن - تفسیر و شرح عدالت
+
+[Translate: Interpretation of justice in the Quran - scholarly exegesis and commentary on the concept of justice ('ʿAdālah').]
+
+2. کاربرد آن در حکومت - رویه‌های تاریخی و اندیشه سیاسی
+
+[Translate: Application to governance - historical implementations and reflections in Islamic political thought.]
+
+A good search needs to find evidence for main aspects separately.
+
+**Optimized Queries (Output):**
+
+1. تفسیر مفهوم عدالت در قرآن توسط متفکران اسلامی
+[Translate: Exegesis of the concept of justice in the Quran by Islamic scholars]
+
+2. عدالت در حکومت از منظر فقه و فلسفه سیاسی اسلامی
+[Translate: The notion of justice in governance from the perspective of Islamic jurisprudence and political philosophy]
+
+3. تحلیل تاریخی کاربرد عدالت قرآنی در مدیریت جامعه
+[Translate: Historical analysis of the application of Quranic justice in societal administration]
+
+4. اندیشه سیاسی اسلامی و مفهوم عدالت
+[Translate: Islamic political thought and the conceptualization of justice]
+
+--- END OF EXAMPLE ---
+
+Now, apply this exact methodology to decompose the following query.
+
+**User Query:** "{user_query}"
+
+**Constraints:**
+
+- The output must be a list of meaningful search phrases.
+- Each phrase must be on a new line, prefixed with a hyphen (-).
+- Queries must be in Persian.
+- Generate an optimized list of 1 to 4 sub-queries. Create ONLY as many as are **truly necessary** to cover all aspects of the original question.
+
+**Output:** (just write Optimized Queries and do not explain any more and do not say "Here are the optimized queries:" or something like that.)
+
+Optimized Queries: (A list of optimized queries)
+
+"""
+\end{PromptBlock}
+
+\subsection{Evidence Filtering Prompt}
+
+The filtering agent examines batched retrieval results and discards low-value passages while preserving any chunk that might carry useful facts.
+
+\begin{PromptBlock}
+FILTER_IRRELEVANT_DOCUMENTS_PROMPT = """
+
+**Situation:** A batch of candidate evidence documents has been retrieved for a user's query. To generate a precise and focused answer, we must filter out any documents that do not provide substantial, related information.
+
+**Intent:** Identify and list the temporary IDs of all "Not Useful" documents. A document is considered "Not Useful" if it is completely irrelevant, off-topic, or only tangentially related and **does not contain specific facts or information needed to answer the user's query.**
+
+**Scaffolding:**
+
+First, review an example of how to perform this task with the required precision. Then, apply the same logic to the new batch of documents.
+
+--- EXAMPLE ---
+
+**Original User Query:** "آیا خوردن گوشت اسب حلال است و نظر مراجع در مورد کراهت آن چیست؟"
+
+[Translate: "Is the consumption of horse meat permissible (halal) in Islam, and what is the stance of religious authorities regarding its disliked (makruh) status?"]
+
+**Candidate Evidence Documents (Example):**
+
+[doc_1]: "در اسلام، حیوانات به دسته‌های مختلفی تقسیم می‌شوند. حیوانات حلال‌گوشت مانند گاو و گوسفند، و حیوانات حرام‌گوشت مانند خوک. اسب جزو حیوانات حلال‌گوشت محسوب می‌شود اما در فقه شیعه، خوردن گوشت آن کراهت دارد. این کراهت به معنای حرام بودن نیست، بلکه به معنای آن است که بهتر است از خوردن آن پرهیز شود. بسیاری از مراجع تقلید مانند آیت‌الله سیستانی و آیت‌الله خامنه‌ای بر این کراهت تأکید دارند."
+
+[Translate: "In Islam, animals are categorized into different groups. Permissible (halal) animals include cows and sheep, whereas forbidden (haram) animals include pigs. Horses are considered halal; however, in Shia jurisprudence, consuming horse meat is regarded as makruh (disliked). This designation does not render it unlawful (haram) but indicates that it is preferable to abstain from consumption. Many leading religious authorities, such as Ayatollah Sistani and Ayatollah Khamenei, emphasize this prohibition."]
+
+[doc_2]: "اسب‌ها حیوانات نجیبی هستند که از دیرباز در زندگی بشر نقش مهمی داشته‌اند. از این حیوانات برای سوارکاری، حمل و نقل و در جنگ‌ها استفاده می‌شده است. نژادهای مختلفی از اسب مانند اسب عرب و ترکمن وجود دارد."
+
+[Translate: "Horses are noble animals that have historically played a significant role in human life. They have been utilized for riding, transportation, and warfare. Various horse breeds exist, such as Arabian and Turkmen horses."]
+
+[doc_3]: "احکام خوردنی‌ها در اسلام بسیار گسترده است. به طور کلی، هر حیوانی که ذبح شرعی نشود، خوردن گوشت آن حرام است. همچنین، برخی از حیوانات دریایی مانند خرچنگ نیز حرام گوشت هستند."
+
+[Translate: "Islamic dietary laws regarding consumables are extensive. Generally, the meat of any animal not slaughtered according to Islamic law is prohibited (haram). Additionally, certain aquatic animals, such as crabs, are considered haram as well."]
+
+**Analysis for Example:**
+
+- `doc_1` is "Useful" because it directly answers both parts of the query (halal status and makrooh ruling).
+- `doc_2` is "Not Useful" because it is completely off-topic (about the role of horses in history, not the religious ruling).
+- `doc_3` is "Not Useful" because it discusses general food rulings but does not mention horse meat, so it doesn't contain the specific information needed to answer the query.
+
+**Required Output for Example:**
+
+Unhelpful Document IDs: [doc_2], [doc_3]
+
+--- END OF EXAMPLE ---
+
+Now, perform the same task for the following batch:
+
+**Original User Query:** "{original_query}"
+
+**Candidate Evidence Documents (Batch {batch_number}):**
+
+{numbered_candidates_text_for_prompt}
+
+**Instructions:**
+
+1. Carefully review each document preview in the batch.
+2. A document is useful if it contains factual information about the entities/topics in the query.
+3. For each document, determine if it provides substantial and related information to answer the "Original User Query".
+4. Even partial but related information is valuable.
+5. List ONLY the temporary IDs of documents that are "Not Useful" (i.e., completely irrelevant or only tangentially related without providing specific facts or information needed to answer the user's query.).
+
+**Constraints:**
+
+- BE INCLUSIVE: When in doubt, KEEP the document.
+- The output MUST be a list of temporary IDs of the **unhelpful** documents, or the word "None" if all documents are useful.
+- Format the list of IDs like: [doc_X], [doc_Y], [doc_Z]
+- Do not include any other text, explanations, or apologies.
+
+**Output:** (A list of **unhelpful** temporary document IDs, or "None")
+
+Unhelpful Document IDs:
+
+"""
+\end{PromptBlock}
+
+\subsection{Structured Evidence Assessment Prompt}
+
+The Structured Evidence Assessment (SEA) agent reasons about sufficiency by building an explicit checklist before deciding whether additional retrieval is required.
+
+\begin{PromptBlock}
+SUFFICIENT_EVIDENCE_PROMPT = """
+
+**Role:** You are a Strategic Intelligence Analyst. Your mission is to determine if the provided evidence is sufficient to accurately answer the user's question by following a sequential analysis.
+
+**Core Mission:** Your entire process must be question-centric, not evidence-centric. You will deconstruct the user's query into a checklist of required information, and then systematically verify each item against the evidence. You MUST ignore all information, however interesting, that is not on your checklist.
+
+You MUST follow this thinking process and output format exactly:
+
+**1. Mission Deconstruction:**
+  - **Main Goal:** [State briefly the primary objective of the user's question and what the user's question requires you to find]
+  - **Required Findings:** [List the specific, individual pieces of information needed to answer the question. A "finding" can be a direct fact or a logical inference from clues.]
+
+**2. Intelligence Synthesis & Analysis:**
+  - **Confirmed Findings:** [Go through your "Required Findings" checklist. For each item, state what the evidence confirms. If the finding is not stated directly, explain the logical inference you made from the provided clues. You MUST only mention facts that can contribute to answering the question's required components (checklist). You MUST ignore any evidence, entities, or facts—even if interesting—that do not help answer the specific components of the user's question. Do not mention irrelevant people or topics in your analysis. You are an expert. If the evidence provides strong, logical clues (e.g., a person's birthplace in a country, a job title within an industry), you MUST make the logical inference (e.g., determining nationality, profession). Do not use weak phrases like "it does not explicitly state."]
+  - **Remaining Gaps:** [If there is missing information, clearly state what crucial information is still missing, formulating it as a requirement for the next phase that creates new queries to search more. else None]
+
+**3. Final Assessment:**
+  - **Conclusion:** [The final answer may not be explicitly stated in a single sentence. You are an expert. If the evidence provides strong, logical clues (e.g., a person's birthplace in a country, a job title within an industry), you MUST make the logical inference (e.g., determining nationality, profession). Do not use weak phrases like "it does not explicitly state."]
+  - **Sufficient:** [A single word: "Yes" if the "Remaining Gaps" list is empty, or "No" if any required finding is still missing.]
+
+--- EXAMPLES ---
+
+**--- Example 1 (Insufficient Evidence - Clear Gap) ---**
+
+**Original Question:** "What was the total number of verses in the surah revealed after the Prophet's night journey to Jerusalem?"
+
+**Evidence:**
+- "The Prophet Muhammad's night journey (Isra and Mi'raj) to Jerusalem is mentioned in Surah Al-Isra."
+- "Surah Al-Kahf was revealed after the night journey and contains the story of the People of the Cave."
+- "The Quran contains 114 surahs in total."
+
+**Your Output for Example 1:**
+
+**1. Mission Deconstruction:**
+- **Main Goal:** To find the total number of verses in the surah revealed after the Prophet's night journey to Jerusalem.
+- **Required Findings:** A: The identification of the night journey event; B: The name of the surah revealed after this event; C: The total number of verses in that surah.
+
+**2. Intelligence Synthesis & Analysis:**
+- **Confirmed Findings:** A: The evidence confirms the night journey is Isra and Mi'raj. B: The evidence confirms the surah revealed after is Surah Al-Kahf.
+- **Remaining Gaps:** C: The total number of verses in Surah Al-Kahf.
+
+**3. Final Assessment:**
+- **Conclusion:** We have identified the night journey as Isra and Mi'raj and the surah revealed after as Surah Al-Kahf, but the evidence lacks the total number of verses in Surah Al-Kahf to answer the question.
+- **Sufficient: No**
+
+**--- Example 2 (Sufficient Evidence - Inference Required) ---**
+
+**Original Question:** "Which was built first, the mosque where the Prophet changed the qibla direction or the mosque built by the first muezzin?"
+
+**Evidence:**
+- "The Prophet Muhammad changed the qibla direction from Jerusalem to Mecca while praying at Masjid al-Qiblatain in Medina."
+- "Masjid al-Qiblatain was built in the year 2 AH (623 CE)."
+- "Bilal ibn Rabah was the first muezzin in Islam and built Masjid Bilal in Damascus."
+- "Masjid Bilal in Damascus was constructed in the year 14 AH (635 CE)."
+
+**Your Output for Example 2:**
+
+**1. Mission Deconstruction:**
+- **Main Goal:** To compare the construction dates of the mosque where the qibla was changed and the mosque built by the first muezzin.
+- **Required Findings:** A: The construction date of the mosque where the qibla was changed; B: The construction date of the mosque built by the first muezzin.
+
+**2. Intelligence Synthesis & Analysis:**
+- **Confirmed Findings:** A: The evidence states the mosque where qibla was changed is Masjid al-Qiblatain, built in 2 AH (623 CE). B: The evidence states the mosque built by the first muezzin is Masjid Bilal, built in 14 AH (635 CE).
+- **Remaining Gaps:** None.
+
+**3. Final Assessment:**
+- **Conclusion:** We have found that the mosque where the qibla was changed is Masjid al-Qiblatain, built in 2 AH (623 CE), and the mosque built by the first muezzin is Masjid Bilal, built in 14 AH (635 CE). We have found the construction dates for both required mosques and can therefore perform the comparison.
+- **Sufficient: Yes**
+
+--- END OF EXAMPLES ---
+
+Now, perform this task for the following:
+
+**Original Question:**
+'{original_query}'
+
+**Evidence:**
+
+{combined_evidence}
+
+"""
+\end{PromptBlock}
+
+\subsection{Query Refinement Prompt}
+
+When the SEA agent signals remaining gaps, the query refinement agent generates hyper-focused follow-up searches grounded in previously confirmed facts.
+
+\begin{PromptBlock}
+REFINE_QUERIES_PROMPT = """
+
+**Situation:** An initial analysis of the evidence has confirmed some facts but also identified specific information that is still missing and required to answer the user's original query.
+
+**Intent:** Generate a new, optimized list of search queries that are laser-focused on finding ONLY the missing pieces of information identified in the "Analysis Summary".
+
+**Scaffolding & Logic:**
+
+- **USE the known facts** from the summary to make the new queries more precise (e.g., use a person's name once it's known).
+- **TARGET the missing information** from the summary directly. Each new query should aim to resolve one of the identified gaps.
+- **AVOID repeating** or rephrasing previous queries.
+
+--- ADVANCED EXAMPLE ---
+
+**Original Question:** "What is the total number of verses in the surah revealed to comfort the Prophet after the death of his uncle?"
+
+**Analysis Summary:**
+
+Based on the evidence, we know that the Prophet's uncle who supported him was **Abu Talib**. Abu Talib died in the Year of Sorrow. The surah revealed to comfort the Prophet after this loss was **Surah Yusuf**. However, the provided documents contain **no specific information about the total number of verses in Surah Yusuf**. To answer the question, we still need to find: **the exact number of verses in Surah Yusuf**.
+
+**Previous Queries:**
+
+- Prophet Muhammad uncle death
+- Year of Sorrow Quran revelation
+
+**Your Output for Example:**
+
+Improved Queries:
+- Surah Yusuf total verses
+- Surah Yusuf verse count
+- Surah Yusuf chapter length
+
+--- END OF EXAMPLE ---
+
+Now, apply this exact logic to the following inputs:
+
+**Original Question:** {original_query}
+
+**Analysis Summary:**
+
+{analysis_summary}
+
+**Previous Queries:**
+
+{combined_previous_queries}
+
+**Constraints:**
+
+- Generate an optimized list of 1 to 4 sub-queries. Create only as many as are truly necessary.
+- Queries must be simple, independent, meaningful, and keyword-focused.
+- **Leverage the "Known Facts" to create highly targeted queries.** For example, once the summary confirms the surah is 'Surah Yusuf', the next query should be "Surah Yusuf total verses", not a generic "surah revealed after uncle death verses".
+
+**Output:** (A list of new, targeted queries. Do not explain anything and do not say "Here are the optimized queries:" or something like that.)
+
+Improved Queries:
+
+"""
+\end{PromptBlock}
+
+\subsection{Faithful Answer Generation Prompt}
+
+The final generator prompt enforces grounding, neutrality, and safe-guard disclaimers while producing the Persian answer delivered to the end user.
+
+\begin{PromptBlock}
+LLM_FINAL_ATTEMPT_PROMPT = """
+
+**Situation:** You are an expert Islamic Knowledge Assistant. The user has asked a question, and after several retrieval and refinement steps, the following numbered evidence items have been gathered. This is the final attempt to answer the question.
+
+**Intent:** Generate a comprehensive, accurate, neutral, and evidence-based answer in Persian to the user's original question. Your answer must strictly adhere to the provided evidence and follow all specified rules.
+
+**Scaffolding:**
+
+You will be given:
+
+1. Numbered evidence items, each with its source URL.
+2. The user's original question.
+3. A strict set of rules for answer generation.
+4. An example of the expected output structure.
+
+**Strict Rules for Answer Generation:**
+
+1.  **Source-Based Answers:**
+    * All answers MUST be strictly based only on the numbered evidence items provided below.
+    * Do NOT introduce any unsupported claims, external knowledge, or personal opinions.
+    * When you cite a fact from an evidence item, embed its reference token like [1], [2], etc., directly after the fact. Cite all relevant sources if multiple pieces of evidence support a point.
+
+2.  **Clarity, Relevance & Comprehensiveness:**
+    * Provide a clear, relevant, and **comprehensive and detailed explanation**, synthesizing information from **all relevant evidence pieces to form a complete narrative**. Aim for a well-structured paragraph or paragraphs.
+    * Avoid vague, off-topic, or rambling explanations.
+
+3.  **Neutrality in Controversial Issues:**
+    * Key disputed topics in Islam include (but are not limited to):
+        - The position and authority (مقام و ولایت) of Hazrat Fatima (peace be upon her).
+        - The concept of Velayat-e Faqih in governance (ولایت فقیه).
+        - Criteria for the validity of congregational prayer (نماز جماعت) led by a non-Shia Imam.
+        - Issues related to women's rights in inheritance and testimony (مسائل حقوق زنان).
+        - Differing opinions on the extent of Ta'zir punishments (حدود تعزیرات).
+        - Differences between Shia and Sunni Islam (اختلاف بین شیعه و سنی).
+    * If the question touches upon such topics and evidence provides multiple perspectives, present all major perspectives neutrally, without endorsing any particular one. Your role is to summarize what existing Islamic sources and scholars (as presented in the evidence) have stated.
+
+4.  **Fatwa & Legal Rulings (فتوا و احکام شرعی):**
+  * [Warning] You must NEVER issue fatwas (final religious legal rulings - فقهی حکم نهایی) yourself.
+    * Do NOT quote personal opinions as fatwa.
+    * If the question asks for a "hukm shari" (حکم شرعی), "hukm chiye" (حکم چیه), "aya batileh?" (آیا باطله؟), etc., or implies a request for a definitive religious ruling, you MUST include the following disclaimer in Persian at the beginning or end of your answer, as appropriate:
+  "[هشدار] من مرجع صدور فتوا نیستم. این پاسخ بر اساس منابع و شواهد ارائه‌شده تهیه شده است، اما برای دریافت حکم شرعی دقیق و متناسب با شرایط فردی، لطفاً به مرجع تقلید واجد شرایط خود مراجعه کنید. فتوا رأی فقهی است که فقط از سوی مرجع تقلید یا مجتهد واجد شرایط صادر می‌شود."
+[Translate: "[Warning] I am not an authority authorized to issue fatwas. This response has been prepared based on available sources and evidence; however, for a precise legal ruling tailored to individual circumstances, please consult a qualified religious authority (marja') or competent jurist. A fatwa is a legal opinion that can only be issued by a recognized marja' or a qualified Islamic scholar."]
+    * You may explain what different sources or scholars (from the evidence) have said regarding a ruling, but always with the above context and disclaimer if a direct ruling is sought.
+
+5.  **Error Handling & Insufficient Evidence:**
+    * If the available evidence contains **almost no direct or substantial information to answer the question, or only very tangential insights** (do not use this warning for missing minor details or if the answer isn't exhaustive), begin your answer with the following Persian phrase:
+  "[هشدار] اطلاعات کاملی برای پاسخ قطعی به این پرسش در شواهد موجود یافت نشد. با این حال، بر اساس شواهد محدود و مرتبط، می‌توان موارد زیر را بیان کرد:"
+[Translate: "[Warning] Complete information to provide a definitive answer to this question was not found in the available evidence. However, based on the limited and relevant evidence, the following points can be stated:"]
+        Then, proceed to provide the best possible answer using the limited evidence.
+    * Only if **NONE** of the provided evidence items contain **ANY relevant or usable information** to even partially address the question, respond ONLY with the following Persian phrase:
+  "[هشدار] متاسفانه، شواهد ارائه شده حاوی اطلاعات مرتبطی برای پاسخ به این پرسش نبودند."
+[Translate: "[Warning] Unfortunately, the provided evidence did not contain relevant information to answer this question."]
+
+**Evidence (each item numbered, with Source_URL):**
+
+{combined_evidence}
+
+**Original Question:**
+
+{original_query}
+
+**Constraints:**
+
+- The entire answer, including any disclaimers or error messages (except the final "no relevant evidence" message), must be in Persian.
+- Adhere strictly to all rules above.
+- Ensure every piece of information taken from the evidence is cited.
+
+**Output:** (Generate the Persian answer now)
+
+"""
+\end{PromptBlock}
 
 \section{Training Details}
 \label{sec:appendix-training}
@@ -914,51 +1302,570 @@ Optimizer & AdamW \\
 \label{tab:retriever-hyperparams}
 \end{table}
 
-\section{Evaluation Methodology}
+\section{LLM-as-Judge Evaluation Prompts}
 \label{sec:appendix-evaluation}
 
-\subsection{LLM-as-Judge Prompts (Condensed)}
+This appendix contains the complete prompt library used to steer the LLM-as-Judge framework discussed in Section~5.2. Publishing the exact instructions ensures that our evaluation protocol can be independently reproduced and audited. Each prompt is provided verbatim, including formatting cues and JSON schemas that we found necessary for stable judge behavior.
 
-Our evaluation framework employs specialized prompts for each quality dimension. Representative examples include:
+\begin{PromptBlock}
+PROMPTS = {
 
-\textbf{Query Decomposition:} Evaluates sub-queries based on relevance, coverage, and efficiency (score 1-5).
+  "query_decomposition": """
 
-\textbf{Filter Efficacy:} Audits the document filter's precision and recall decisions against original filtering instructions.
+  You are an expert AI evaluator specializing in search and query analysis. Your task is to assess the quality of query decomposition.
 
-\textbf{Faithfulness:} Determines if the answer is ``Fully Faithful,'' ``Partially Faithful,'' or ``Not Faithful'' to the provided evidence.
+  Evaluate the generated sub-queries based on the original user question using the following criteria:
 
-\textbf{Answer Correctness:} Evaluates both relevance (how well the answer addresses the question) and correctness (factual accuracy compared to ground truth) on a 1-5 scale.
+  1.  **Relevance:** How directly related is each sub-query to the main question?
+  2.  **Coverage:** Do the sub-queries collectively cover all essential aspects of the main question?
+  3.  **Efficiency:** Are the sub-queries concise, focused, and well-formed for a search engine?
 
-\textbf{Negative Rejection:} Verifies if the system correctly refused to answer out-of-domain questions.
+  [User Question]:
 
-\textbf{Iterative Improvement:} Ranks answers from iterations 1-4 to measure progressive quality gains.
+  "{question}"
 
-\subsection{Judge Model Reliability}
+  [Generated Sub-Queries]:
 
-The reliability of Llama-4-Maverick-17B as our judge was validated through human expert evaluation of 100 samples across various component-level tasks, achieving 94\% agreement with human judgments.
+  {sub_queries}
 
-\section{Cost and Latency Calculations}
+  Provide your assessment in the following JSON format:
+
+  {{
+    "score": <A numeric score from 1.0 (Very Poor) to 5.0 (Excellent) based on the criteria above>,
+    "reasoning": "<A very brief explanation for your score>"
+  }}
+
+  """,
+
+  "filter_efficacy": """
+
+  You are an expert auditor for an AI's document filtering module. Your task is to meticulously evaluate the filter's decisions by strictly adhering to the original instructions given to it.
+
+  [User Question]:
+
+  "{question}"
+
+  ---
+
+  [The Filter's Original Instructions]:
+
+  The filter's goal was to identify and discard "Not Useful" documents. It was given the following definitions and rules:
+
+  1.  **Definition of "Useful":** A document is useful if it contains factual information about the entities/topics in the query. **Even partial but related information is considered valuable.**
+  2.  **Definition of "Not Useful":** A document is "Not Useful" if it is completely irrelevant, off-topic, or only tangentially related without providing specific facts needed to answer the query.
+  3.  **Key Principle:** The filter was given one crucial tie-breaker rule: **"BE INCLUSIVE: When in doubt, KEEP the document."**
+
+  Your audit must strictly follow these same rules.
+
+  ---
+
+  [Documents the Filter KEPT]:
+
+  {kept_docs}
+
+  [Documents the Filter DISCARDED]:
+
+  {discarded_docs}
+
+  **Your Audit Task:**
+
+  Identify the filter's errors based on its original instructions:
+
+  1.  **Precision Errors:** Review the KEPT list. Identify the IDs of any documents that are **clearly "Not Useful"** according to the definition and should have been discarded. (If a document is borderline useful, the filter was correct to KEEP it).
+  2.  **Recall Errors:** Review the DISCARDED list. Identify the IDs of any documents that are **unambiguously "Useful"** according to the definition and should have been kept.
+
+  Provide your audit findings in the following strict JSON format. If no errors are found in a category, provide an empty list.
+
+  {{
+    "incorrectly_kept_ids": ["<ID of any 'Not Useful' document found in the KEPT list>", ...],
+    "incorrectly_discarded_ids": ["<ID of any 'Useful' document found in the DISCARDED list>", ...]
+  }}
+
+  """,
+
+  "sufficiency_check": """
+
+  **Role:** You are a pragmatic and efficient QA Evaluator. Your goal is to determine if the provided evidence is "good enough" to satisfactorily answer the user's question.
+
+  **Core Task:**
+
+  Your task is to assess if the main goal of the user's question can be achieved with the given evidence. You must distinguish between "critical" missing information and "nice-to-have" details.
+
+  **Guiding Principles:**
+
+  1.  **Focus on the Primary Intent:** First, identify the core question(s) the user is asking. What is the most important piece of information they are looking for?
+  2.  **Assess Evidence Against Intent:** Check if the evidence contains the necessary facts to fulfill this primary intent.
+  3.  **Pragmatism Rule:**
+      - The evidence is **"Sufficient" (Yes)** if the main question can be answered, even if peripheral details or deeper context is missing.
+      - The evidence is **"Insufficient" (No)** only if a **critical piece of information**, essential to forming the main answer, is absent.
+
+  --- EXAMPLE ---
+
+  **User Question:** "What was the main outcome of the Battle of Badr and which year did it take place?"
+
+  **Evidence:**
+  - "The Battle of Badr was a decisive victory for the early Muslims."
+  - "Key leaders of the Quraysh were defeated in the engagement."
+  - "The victory at Badr greatly strengthened the political and military position of the Islamic community in Medina."
+
+  **Your Analysis for Example:**
+
+  The evidence clearly confirms the "main outcome" (a decisive victory for Muslims). However, a critical part of the question, "which year did it take place?", is completely missing from the evidence. Therefore, a complete answer cannot be formed.
+
+  **Your Output for Example:**
+
+  {{
+  "reasoning": "The evidence confirms the outcome of the battle (a decisive victory) but a critical piece of requested information, the year of the battle, is completely missing.",
+  "is_sufficient": false
+  }}
+
+  --- END OF EXAMPLE ---
+
+  Now, apply this pragmatic logic to the following:
+
+  [User Question]:
+
+  "{question}"
+
+  [Collected Evidence]:
+
+  {evidence}
+
+  Provide your final assessment in the following strict JSON format:
+
+  {{
+  "reasoning": "<A brief analysis of what can be answered and what critical information, if any, is still missing.>",
+  "is_sufficient": <true or false>
+  }}
+
+  """,
+
+  "query_refinement": """
+
+  You are an expert AI systems evaluator. A RAG system determined its initial evidence was insufficient and generated new sub-queries to find missing information. Your task is to evaluate the quality of these new queries.
+
+  [User Question]:
+
+  "{question}"
+
+  [Insufficient Initial Evidence]:
+
+  {evidence}
+
+  [Newly Generated Sub-Queries for Refinement]:
+
+  {new_queries}
+
+  Assess how effectively the new sub-queries target the information gaps in the initial evidence to help answer the main question.
+
+  Provide your assessment in the following JSON format:
+
+  {{
+    "score": <A numeric score from 1.0 (Poorly targeted) to 5.0 (Excellent, precisely targets gaps)>,
+    "reasoning": "<A very brief explanation for your score>"
+  }}
+
+  """,
+
+  "final_context_relevance": """
+
+  You are an expert information retrieval evaluator. Your task is to score the relevance of each document in the final context that was used to generate an answer.
+
+  [User Question]:
+
+  "{question}"
+
+  [Final Context Used for Generation (final_relevant_evidence)]:
+
+  {final_evidence}
+
+  For each document in the final context, provide a relevance score.
+
+  Provide your assessment in the following JSON format:
+
+  {{
+    "relevance_scores": [
+      { "doc_id": "<_id of doc 1>", "score": <numeric score from 1.0 (Irrelevant) to 5.0 (Highly Relevant)> },
+      { "doc_id": "<_id of doc 2>", "score": <numeric score from 1.0 (Irrelevant) to 5.0 (Highly Relevant)> }
+    ]
+  }}
+
+  """,
+
+  "faithfulness": """
+
+  You are an expert in AI safety and fact-checking, specializing in the evaluation of Retrieval-Augmented Generation (RAG) systems. Your task is to evaluate the answer's faithfulness to the provided evidence with nuance.
+
+  - A faithful answer must be fully grounded in the provided context. However, this does not mean it must be a simple copy-paste of the text. **Valid synthesis, summarization, and logical inference based only on the provided information are considered faithful and desirable.**
+  - A statement is only considered **"Unfaithful"** if it introduces new, verifiable information that is **absent** from the context or if it **contradicts** the context.
+
+  [User Question (for context)]:
+
+  "{question}"
+
+  [Provided Context (final_relevant_evidence)]:
+
+  {final_evidence}
+
+  [Generated Answer]:
+
+  "{final_answer}"
+
+  **Your Task:**
+
+  1. Analyze each claim within the [Generated Answer].
+  2. For each claim, determine if it is directly stated, a valid synthesis/inference from the context, or an unfaithful statement (introducing new facts).
+  3. Based on this analysis, provide an overall verdict according to the rubric below.
+
+  **Verdict Rubric:**
+
+  - **'Fully Faithful'**: All claims in the answer are either directly stated in the context or are valid logical conclusions/summaries derived only from the information present in the context.
+  - **'Partially Faithful'**: The answer is mostly faithful, but contains minor, non-critical claims or details that cannot be inferred from the context.
+  - **'Not Faithful'**: The answer contains significant or central factual claims that are not supported by, or actively contradict, the context.
+
+  Provide your verdict in the following strict JSON format:
+
+  {{
+    "faithfulness_verdict": "<One of three strings: 'Fully Faithful', 'Partially Faithful', or 'Not Faithful'>",
+    "reasoning": "<If not fully faithful, specify which claims in the answer are unsupported by the context. Explain if it's an invalid inference or a completely new fact.>"
+  }}
+
+  """,
+
+  "answer_relevance_and_correctness": """
+
+  You are a meticulous grader for a Question-Answering system. Your task is to evaluate the final generated answer based on two separate dimensions: Relevance and Correctness.
+
+  [User Question]:
+
+  "{question}"
+
+  [Ground Truth Answer]:
+
+  "{ground_truth_answer}"
+
+  [Generated Answer]:
+
+  "{final_answer}"
+
+  1.  **Relevance Score:** How well does the Generated Answer address the user's question? Is it comprehensive and on-topic? (Ignore factual correctness for this score).
+  2.  **Correctness Score:** Evaluate how factually accurate the Generated Answer is.
+
+      **Important Note:** The [Ground Truth Answer] is a concise fact (e.g., a name, date, or a few words). The [Generated Answer] is an explanatory text. Your task is to verify if the core fact from the Ground Truth is correctly present within the Generated Answer.
+
+      - **Full credit (4.5-5.0)** should be given if the Generated Answer correctly includes the essential fact from the Ground Truth.
+      - **Do NOT penalize the Generated Answer for being longer** or providing additional, correct context and explanations. This is desirable behavior.
+      - **Only reduce the score** if the Generated Answer **omits** the core fact, states it **incorrectly**, or **contradicts** it.
+
+  - [User Question]: "What is the fifth pillar of Islam?"
+  - [Ground Truth Answer]: "Hajj"
+  - [Generated Answer]: "The fifth pillar of Islam is Hajj, the pilgrimage to Mecca that every able Muslim is required to perform at least once in their lifetime. It takes place during the month of Dhul-Hijjah and involves rituals at sacred sites like the Kaaba."
+  - **Correctness Score for this example: 5.0**. The answer correctly includes the key fact "Hajj" while providing accurate, additional context about its significance and timing.
+
+  Provide your scores in the following JSON format. You may use half-points (e.g., 3.5, 4.5) for more precision.
+
+  {{
+    "relevance_score": <A numeric score from 1.0 (Not relevant) to 5.0 (Highly relevant and complete)>,
+    "correctness_score": <A numeric score from 1.0 (Completely incorrect) to 5.0 (Completely correct)>,
+    "reasoning": "<A very brief explanation for both scores>"
+  }}
+
+  """,
+
+  "negative_rejection": """
+
+  You are an AI evaluator testing a system's ability to handle out-of-domain questions. This question is designed to have no answer in the knowledge base.
+
+  [User Question]:
+
+  "{question}"
+
+  [Generated Answer]:
+
+  "{final_answer}"
+
+  Did the system correctly refuse to provide a definitive answer, for instance by stating it doesn't have the information?
+
+  Provide your assessment in the following JSON format:
+
+  {{
+    "correctly_rejected": <true or false>
+  }}
+
+  """,
+
+  "noise_robustness": """
+
+  You are an AI evaluator testing a system's robustness to noisy context. The evidence provided to the system intentionally contains irrelevant documents.
+
+  [User Question]:
+
+  "{question}"
+
+  [Ground Truth Answer]:
+
+  "{ground_truth_answer}"
+
+  [Final Context (contains both relevant and irrelevant docs)]:
+
+  {final_evidence}
+
+  [Generated Answer]:
+
+  "{final_answer}"
+
+  Evaluate the system's performance on two criteria:
+
+  1.  **Robustness:** Did the Generated Answer successfully ignore the noisy/irrelevant information in the context?
+  2.  **Correctness:** Is the Generated Answer still factually correct compared to the Ground Truth Answer?
+
+  Provide your assessment in the following JSON format:
+
+  {{
+    "is_robust": <true or false>,
+    "is_correct": <true or false>,
+    "reasoning": "<very Briefly explain if and how the noise or incorrectness affected the answer>"
+  }}
+
+  """,
+
+  "iterative_improvement": """
+
+  You are an expert AI quality evaluator. For a single question, you are given four answers generated by the same system but with different levels of iterative refinement (1, 2, 3, and 4 iterations). Your task is to rank these answers from best to worst.
+
+  [User Question]:
+
+  "{question}"
+
+  [Answer from 1 Iteration (iter_1)]:
+
+  "{answer_1}"
+
+  [Answer from 2 Iterations (iter_2)]:
+
+  "{answer_2}"
+
+  [Answer from 3 Iterations (iter_3)]:
+
+  "{answer_3}"
+
+  [Answer from 4 Iterations (iter_4)]:
+
+  "{answer_4}"
+
+  Rank these three answers from best (Rank 1) to worst (Rank 4).
+
+  Provide your ranking in the following JSON format:
+
+  {{
+    "ranking": ["<ID of the best answer, e.g., 'iter_3'>", "<ID of the second-best answer, e.g., 'iter_4'>", "<ID of the third-best answer, e.g., 'iter_2'>", "<ID of the worst answer, e.g., 'iter_1'>"],
+    "reasoning": "<A very brief explanation for your ranking, noting whether more iterations led to a clear improvement>"
+  }}
+
+  """
+
+}
+\end{PromptBlock}
+
+To validate the reliability of our judge, Llama-4-Maverick-17B-128E-Instruct-FP8, we manually reviewed 100 samples drawn from the component tasks above. Human annotators agreed with the model's judgments 94\% of the time, reinforcing the suitability of these prompts for automated evaluation.
+
+\section{Latency Measurement and Normalization}
 \label{sec:appendix-metrics}
 
-\subsection{Latency Measurement}
+To ensure reproducible and fair performance reporting, we decomposed end-to-end response time into distinct latency components observed under matched workload configurations.
 
-End-to-end latency was decomposed into: (1) model computation, (2) API overhead, and (3) retrieval orchestration. Based on empirical measurements with a 90:10 input:output token ratio, we derived a normalized latency of \textbf{2.21 ms per token}. The breakdown shows approximately 84\% from model computation, 12\% from API communication, and 4\% from retrieval processes.
+\subsection{Token Ratio and Measurement Scope}
 
-\subsection{Cost Calculation}
+Across all experiments, the ratio of input to output tokens averaged \textbf{90:10}. This reflects the reality of iterative RAG workflows in which the majority of tokens are consumed during context ingestion and reasoning, while the final answer contributes a relatively small decode footprint. The reported metrics therefore summarize full request lifecycles rather than isolated model calls.
 
-Costs are calculated using DeepInfra's Q4 2025 pricing:
+\subsection{Normalized Latency}
+
+A linear regression over operational logs produced an average normalized latency of \textbf{2.21 ms per token} (95\% range: 2.14--2.30 ms). This figure combines both pre-fill and decode stages and is hardware-agnostic, enabling comparisons across deployments that match our workload characteristics.
+
+\subsection{Component-wise Decomposition}
+
+We model end-to-end latency as
+\begin{equation}
+  t_{\mathrm{E2E}} = mN + hC + R,
+\end{equation}
+where $N$ denotes total tokens (input + output), $C$ the number of model calls, $m$ the intrinsic model cost, $h$ the API/proxy overhead per call, and $R$ a retrieval-orchestration constant. Fitting this model to our measurements yields the estimates in Table~\ref{tab:latency-decomp}.
+
+\begin{table*}[t]
+\centering
+\small
+\begingroup
+\setlength{\tabcolsep}{8pt}
+\begin{tabular}{lccc}
+\hline
+  {\bfseries Component} & {\bfseries Symbol} & {\bfseries Estimated Value} & \shortstack{{\bfseries Per-token}\\{\bfseries Contribution}} \\
+\hline
+\shortstack{Intrinsic model\\compute} & $m$ & 1.866 ms/token & 1.866 ms/token \\
+\shortstack{API/proxy\\overhead} & $h$ & 0.50 s per call & $\approx 0.26$ ms/token \\
+\shortstack{Retrieval/\\orchestration} & $R$ & 1.0 s per run & $\approx 0.09$ ms/token \\
+  {\bfseries Total} & & & {\bfseries $\approx 2.21$ ms/token} \\
+\hline
+\end{tabular}
+\endgroup
+\caption{Latency decomposition for the FAIR-RAG pipeline. The per-token contributions for $h$ and $R$ are computed using the observed mean call density (5.64 calls per 10.9k tokens).}
+\label{tab:latency-decomp}
+\end{table*}
+
+The decomposition indicates that roughly 84\% of latency arises from intrinsic model computation, 12\% from API/proxy overhead, and 4\% from retrieval orchestration.
+
+\subsection{Operational Formulations}
+
+Two equivalent formulations proved useful for downstream analysis:
+\begin{align}
+  t_{\mathrm{E2E}} &\approx 0.00221 \times N \quad [\mathrm{s}], \\
+  t_{\mathrm{E2E}} &\approx 0.001866\,N + 0.50\,C + 1.0.
+\end{align}
+The first expression directly reproduces observed latencies, while the second isolates the sensitivity to model-call counts.
+
+\subsection{Sensitivity Analysis}
+
+Given correlation between $N$ and $C$ in multi-stage pipelines, the fitted parameters admit conservative ranges: $h \in [0.3,0.7]$ seconds per call (0.16--0.36 ms/token) and $R \in [0.5,1.5]$ seconds per run (0.05--0.14 ms/token). Within these bounds the intrinsic model share varies between 1.71 and 2.00 ms/token, while overall normalized latency remains near 2.21 ms/token.
+
+\subsection{Interpretation and Reproducibility}
+
+To recover intrinsic model time from raw measurements we apply
+\begin{equation}
+  t_{\mathrm{model}} \approx t_{\mathrm{measured}} - 0.50\,C - 1.0,
+\end{equation}
+and normalize by $N$. All parameters derive from empirical logs collected under consistent workload assumptions, enabling external researchers to replicate our latency accounting or to benchmark alternative serving configurations.
+
+\section{Cost Calculation Methodology}
+\label{sec:appendix-cost}
+
+We report detailed cost estimates using DeepInfra's Q4~2025 pricing sheets for on-demand inference \cite{DeepInfraPricing2025}. The calculations mirror the workloads used in our experiments and assume identical token ratios to the latency analysis.
+
+\subsection{Per-Model Pricing}
+
+The pay-as-you-go rates (in USD per million tokens) for the models deployed in FARSIQA are:
 \begin{itemize}
-    \item \textbf{Small Model:} \$0.033/Mtok (blended)
-    \item \textbf{Large Model:} \$0.247/Mtok (blended)
-    \item \textbf{Reasoner Model:} \$0.870/Mtok (blended)
-    \item \textbf{FARSIQA (Dynamic):} \$0.246/Mtok (80\% Large, 15\% Small, 5\% Reasoner)
+  \item \textbf{Small model} (Llama-3 8B class): input \$0.03/Mtok, output \$0.06/Mtok.
+  \item \textbf{Large model} (Llama-3.1 70B class): input \$0.23/Mtok, output \$0.40/Mtok.
+  \item \textbf{Reasoner model} (DeepSeek-R1 class): input \$0.70/Mtok, output \$2.40/Mtok.
 \end{itemize}
 
-The blended rate accounts for a 90:10 input:output token ratio typical in RAG systems.
+\subsection{Blended Cost Rates}
+
+Because 90\% of tokens are consumed as input context, we compute a blended rate for each model via
+\begin{align}
+    \text{BlendedRate} &= 0.90 \times \text{InputPrice} \nonumber \\
+                       &\quad+ 0.10 \times \text{OutputPrice}.
+\end{align}
+This yields \$0.033/Mtok (Small), \$0.247/Mtok (Large), and \$0.870/Mtok (Reasoner).
+
+\subsection{Dynamic Allocation Mix}
+
+FARSIQA dynamically routes generation requests across models. Empirically, 80\% of queries use the large model, 15\% the small model, and 5\% the reasoner. The weighted blended rate therefore equals
+\begin{align}
+  	\text{DynamicRate} &= 0.80 \times 0.247 \nonumber \\
+                     &\quad+ 0.15 \times 0.033 \nonumber \\
+                     &\quad+ 0.05 \times 0.870 \label{eq:dynamic-rate} \\
+                     &\approx 0.246~\$/\text{Mtok}. \nonumber
+\end{align}
+
+\subsection{Per-Query Cost Summary}
+
+Table~\ref{tab:cost-summary} reports the resulting per-query cost estimates for the configurations evaluated in Section~6.
+
+\begin{table*}[t]
+\centering
+\small
+\begin{tabular}{lccc}
+\hline
+\textbf{Configuration} & \textbf{Avg. Tokens} & \textbf{Blended Rate (\$/Mtok)} & \textbf{Avg. Cost (\$)} \\
+\hline
+Static Small & 16{,}145 & 0.033 & $5.33\times10^{-4}$ \\
+Static Large & 11{,}681 & 0.247 & $2.89\times10^{-3}$ \\
+Static Reasoner & 33{,}934 & 0.870 & $2.96\times10^{-2}$ \\
+FARSIQA (Dynamic) & 11{,}863 & 0.246 & $2.92\times10^{-3}$ \\
+\hline
+\end{tabular}
+\caption{Average cost per query under the pricing model from \cite{DeepInfraPricing2025}. Minor discrepancies with the main text reflect rounding and empirical call-level accounting ($\approx 2.51\times10^{-3}$ \$ per query for FARSIQA).}
+\label{tab:cost-summary}
+\end{table*}
 
 \section{Failure Mode Analysis Prompt}
 \label{sec:appendix-failure}
 
-Our failure analysis employs a structured LLM-assisted methodology. The prompt establishes the model as a RAG diagnostician and requires classification into six failure categories: Query Decomposition Error, Retrieval Failure, Evidence Filtering Error, SEA Error, Query Refinement Error, or Generation Failure. For each failed query, the complete execution trace is analyzed to identify the primary bottleneck with reasoning, root cause analysis, and suggested improvements. This hybrid human-AI approach provides actionable insights into system limitations.
+For transparency we reproduce the full diagnostic prompt that powers the failure analysis discussed in Section~6.7. The instruction constrains the judge to attribute each failed case to the earliest pipeline error while providing structured reasoning.
+
+\begin{PromptBlock}
+FAILURE_ANALYSIS_PROMPT = """
+
+**ROLE:** You are an expert RAG (Retrieval-Augmented Generation) system diagnostician. Your task is to perform a meticulous root cause analysis on a failed query-answer pair from an advanced, iterative RAG system.
+
+**CONTEXT:** The system has already produced an answer that was graded as incorrect. You have been given the complete execution trace for this failed sample. Your goal is to identify the single, primary point of failure within the RAG pipeline.
+
+**FAILURE CATEGORIES:**
+
+You must classify the failure into one of the following six categories. Read these definitions carefully.
+
+1.  **Query Decomposition Error:** The initial user question was not broken down into effective, specific sub-queries. The sub-queries were irrelevant, missed key aspects of the original question, or sent the retrieval process in the wrong direction from the very beginning.
+2.  **Retrieval Failure:** The retriever, despite having well-formed sub-queries, failed to find and return the relevant documents from the knowledge base. The correct information was simply not present in the `[All Retrieved Documents (Unfiltered)]` set.
+3.  **Evidence Filtering Error:** The correct information WAS successfully retrieved by the retriever, but the subsequent filtering/reranking step mistakenly discarded the crucial documents. Look for correct information in `[Discarded Documents]` that should have been kept.
+4.  **SEA Error (Sufficiency Evaluation Error):** The system incorrectly concluded that the gathered evidence was sufficient to answer the question, while in reality, critical information was still missing. This caused the system to stop searching prematurely and attempt to answer with incomplete data.
+5.  **Query Refinement Error:** After correctly identifying that the initial evidence was insufficient, the system failed to generate effective new sub-queries to target the specific information gaps. The new queries were redundant, vague, or did not address the missing pieces.
+6.  **Generation Failure:** All preceding steps worked correctly. The final set of evidence (`[Final Relevant Evidence]`) contained all the necessary information to form a correct answer. However, the language model failed during the final synthesis step. This includes hallucinating facts not present in the evidence, making incorrect logical inferences, or misinterpreting the provided evidence.
+
+**PRIMARY FAILURE RULE:**
+
+A failure in an earlier stage often causes failures in later stages. Your task is to identify the **earliest, most fundamental error** in the pipeline. For example, if Retrieval failed to find any good documents, the Generation will also fail, but the root cause is **Retrieval Failure**, not Generation Failure.
+
+**EXECUTION TRACE FOR ANALYSIS:**
+
+[User Question]:
+
+"{question}"
+
+[Ground Truth Answer (The correct answer)]:
+
+"{ground_truth_answer}"
+
+[Generated (Incorrect) Answer]:
+
+"{final_answer}"
+
+--- RAG Pipeline Details ---
+
+[Initial Sub-Queries Generated]:
+
+{sub_queries}
+
+[All Retrieved Documents (Unfiltered)]:
+
+{all_retrieved_docs}
+
+[Discarded Documents (By Filter)]:
+
+{discarded_docs}
+
+[Final Relevant Evidence (Used for Generation)]:
+
+{final_evidence}
+
+[Iteration Reports (Sufficiency Checks & Refinements)]:
+
+{iteration_reports}
+
+--- YOUR TASK ---
+
+Based on all the provided information and adhering strictly to the definitions, provide your analysis in the following JSON format.
+
+**Important: Do not include any keys other than the four specified below.**
+
+{
+  "failure_category": "<The value for this key MUST be one of the following exact strings: 'Query Decomposition Error', 'Retrieval Failure', 'Evidence Filtering Error', 'SEA Error', 'Query Refinement Error', 'Generation Failure'. Do NOT add any extra text or explanations.>",
+  "reasoning": "<Provide a concise, step-by-step justification ...>",
+  "root_cause_analysis": "<Go one level deeper. Why did this error likely happen? ...>",
+  "suggested_improvement": "<Propose a concrete, actionable solution ...>"
+}
+
+"""
+\end{PromptBlock}
+
+The structured output schema above enabled hybrid human/AI review: LLM drafts were audited by domain experts to confirm the assigned failure category and to prioritize remediation efforts.
 
 \end{document}
