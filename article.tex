@@ -14,6 +14,7 @@
 \usepackage{latexsym}
 \usepackage{mathtools}
 \usepackage{fvextra}
+\newcommand{\rtltext}[1]{\begin{RTL}#1\end{RTL}}
 \DefineVerbatimEnvironment{PromptBlock}{Verbatim}{fontsize=\small,breaklines=true,breakanywhere=true,formatcom=\promptfont,breaksymbol=}
 
 % For proper rendering and hyphenation of words containing Latin characters (including in bib files)
@@ -815,20 +816,36 @@ You are provided with the user's question, rules for scope/ethics, and guideline
 
 Analyze the question and classify it by outputting ONLY one of the following exact labels after "Selected Label:":
 
-- "VALID_OBVIOUS": If the question is related to Islamic knowledge, is ethical, AND is so obvious that the model can confidently answer it without retrieval, purely from general common knowledge (e.g., "قبله مسلمانان به کدام سمت است؟", "ماه رمضان چند روز است؟").
+- "VALID_OBVIOUS": If the question is related to Islamic knowledge, is ethical, AND is so obvious that the model can confidently answer it without retrieval, purely from general common knowledge
+\end{PromptBlock}
 
+\fa{(e.g., ``قبله مسلمانان به کدام سمت است؟'', ``ماه رمضان چند روز است؟'').}
+
+\begin{PromptBlock}
 [Translate: (e.g., "In which direction do Muslims face during prayer (Qibla)?", "How many days does the month of Ramadan last?").]
 
-- "VALID_SMALL": If the question is related to Islamic knowledge, is ethical, AND is very simple (e.g., direct factual recall like "فرق بین نمازهای واجب (فرض) و مستحب (سنت) چیست؟").
+- "VALID_SMALL": If the question is related to Islamic knowledge, is ethical, AND is very simple
+\end{PromptBlock}
 
+\fa{(e.g., direct factual recall like ``فرق بین نمازهای واجب (فرض) و مستحب (سنت) چیست؟'').}
+
+\begin{PromptBlock}
 [Translate: (e.g., direct factual recall like "What is the difference between obligatory (Fard) and recommended (Sunnah) prayers?").]
 
-- "VALID_LARGE": If the question is related to Islamic knowledge, is ethical, AND requires explanation, interpretation, comparison, or nuanced understanding. THIS IS THE PREFERRED DEFAULT for most valid questions (e.g., "توضیح مفهوم توحید در قرآن.", "تفاوت بین حدیث صحیح و ضعیف چیست؟").
+- "VALID_LARGE": If the question is related to Islamic knowledge, is ethical, AND requires explanation, interpretation, comparison, or nuanced understanding. THIS IS THE PREFERRED DEFAULT for most valid questions
+\end{PromptBlock}
 
+\fa{(e.g., ``توضیح مفهوم توحید در قرآن.'', ``تفاوت بین حدیث صحیح و ضعیف چیست؟'').}
+
+\begin{PromptBlock}
 [Translate: (e.g., "Explain the concept of Tawhid (the oneness of God) in the Qur'an.", "What is the difference between a Sahih (authentic) and a Da'if (weak) Hadith?").]
 
-- "VALID_REASONER": If the question is related to Islamic knowledge, is ethical, AND specifically requires multi-step logical deduction, complex rule application, or mathematical calculations based on Islamic principles (e.g., "شخصی فوت کرده و یک همسر، دو پسر و یک دختر دارد. اگر ماترک او ۱۲۰ سکه طلا باشد، سهم‌الارث هر یک چقدر است؟"). Use this very sparingly.
+- "VALID_REASONER": If the question is related to Islamic knowledge, is ethical, AND specifically requires multi-step logical deduction, complex rule application, or mathematical calculations based on Islamic principles
+\end{PromptBlock}
 
+\fa{(e.g., ``شخصی فوت کرده و یک همسر، دو پسر و یک دختر دارد. اگر ماترک او ۱۲۰ سکه طلا باشد، سهم‌الارث هر یک چقدر است؟''). Use this very sparingly.}
+
+\begin{PromptBlock}
 [Translate: (e.g., "A person passed away leaving behind a spouse, two sons, and a daughter. If the estate amounts to 120 gold coins, what is the inheritance share of each heir?"). Use this very sparingly.]
 
 - "OUT_OF_SCOPE_ISLAMIC": If the question is ethical and has **no anchor** to any specific Islamic personality, book, concept, or event (e.g., "How to configure a router?").
@@ -843,7 +860,13 @@ Analyze the question and classify it by outputting ONLY one of the following exa
 2. **Islamic Scope (Coverage of Response):**
     - **This is the most important rule: If the question is anchored to a specific Islamic personality, book, concept, historical event, or place, it MUST be considered IN SCOPE.**
     - Only reject questions that have absolutely no connection to Islamic knowledge, history, civilization, culture, or related fields.
-    - **Hybrid Questions Example:** A query like "مولف کتاب حقيقة مصحف فاطمة عند الشيعة مدرک دکتری در چه رشته ای دریافت کرد؟" (What PhD did the author of 'The Truth of Mushaf Fatima' receive?) **MUST be classified as "VALID_LARGE"**. Even though it asks about an academic degree (a general knowledge fact), it is anchored to a specific Islamic author and book, making it valid.
+    - **Hybrid Questions Example:** A query like
+\end{PromptBlock}
+
+\fa{``مولف کتاب حقيقة مصحف فاطمة عند الشيعة مدرک دکتری در چه رشته ای دریافت کرد؟''}
+
+\begin{PromptBlock}
+(What PhD did the author of 'The Truth of Mushaf Fatima' receive?) **MUST be classified as "VALID_LARGE"**. Even though it asks about an academic degree (a general knowledge fact), it is anchored to a specific Islamic author and book, making it valid.
 
 3. **Model Selection Preference:**
    - **Default to "VALID_LARGE"** for any valid Islamic question unless it's extremely simple or explicitly requires complex reasoning/calculation.
@@ -886,37 +909,71 @@ First, understand the principles of effective decomposition:
 Now, study the following example carefully to understand how to apply these principles.
 
 --- EXAMPLE ---
+\end{PromptBlock}
 
-**Original User Query:** "متفکران اسلامی در طول تاریخ چگونه مفهوم عدالت در قرآن را تفسیر کرده و آن را در حکومت به کار برده‌اند؟"
+\noindent\textbf{Original User Query:} \fa{``متفکران اسلامی در طول تاریخ چگونه مفهوم عدالت در قرآن را تفسیر کرده و آن را در حکومت به کار برده‌اند؟''}
 
+\begin{PromptBlock}
 [Translate: "How have Islamic thinkers historically interpreted the concept of justice in the Quran and applied it to governance?"]
 
 **Rationale/Analysis (This is your thought process):**
 
 The question contains two primary components:
+\end{PromptBlock}
 
-1. تفسیر عدالت در قرآن - تفسیر و شرح عدالت
+\begin{enumerate}
+\item \fa{تفسیر عدالت در قرآن - تفسیر و شرح عدالت}
+\end{enumerate}
 
+\begin{PromptBlock}
 [Translate: Interpretation of justice in the Quran - scholarly exegesis and commentary on the concept of justice ('ʿAdālah').]
+\end{PromptBlock}
 
-2. کاربرد آن در حکومت - رویه‌های تاریخی و اندیشه سیاسی
+\begin{enumerate}
+\setcounter{enumi}{1}
+\item \fa{کاربرد آن در حکومت - رویه‌های تاریخی و اندیشه سیاسی}
+\end{enumerate}
 
+\begin{PromptBlock}
 [Translate: Application to governance - historical implementations and reflections in Islamic political thought.]
 
 A good search needs to find evidence for main aspects separately.
 
 **Optimized Queries (Output):**
+\end{PromptBlock}
 
-1. تفسیر مفهوم عدالت در قرآن توسط متفکران اسلامی
+\begin{enumerate}
+\item \fa{تفسیر مفهوم عدالت در قرآن توسط متفکران اسلامی}
+\end{enumerate}
+
+\begin{PromptBlock}
 [Translate: Exegesis of the concept of justice in the Quran by Islamic scholars]
+\end{PromptBlock}
 
-2. عدالت در حکومت از منظر فقه و فلسفه سیاسی اسلامی
+\begin{enumerate}
+\setcounter{enumi}{1}
+\item \fa{عدالت در حکومت از منظر فقه و فلسفه سیاسی اسلامی}
+\end{enumerate}
+
+\begin{PromptBlock}
 [Translate: The notion of justice in governance from the perspective of Islamic jurisprudence and political philosophy]
+\end{PromptBlock}
 
-3. تحلیل تاریخی کاربرد عدالت قرآنی در مدیریت جامعه
+\begin{enumerate}
+\setcounter{enumi}{2}
+\item \fa{تحلیل تاریخی کاربرد عدالت قرآنی در مدیریت جامعه}
+\end{enumerate}
+
+\begin{PromptBlock}
 [Translate: Historical analysis of the application of Quranic justice in societal administration]
+\end{PromptBlock}
 
-4. اندیشه سیاسی اسلامی و مفهوم عدالت
+\begin{enumerate}
+\setcounter{enumi}{3}
+\item \fa{اندیشه سیاسی اسلامی و مفهوم عدالت}
+\end{enumerate}
+
+\begin{PromptBlock}
 [Translate: Islamic political thought and the conceptualization of justice]
 
 --- END OF EXAMPLE ---
@@ -955,23 +1012,31 @@ FILTER_IRRELEVANT_DOCUMENTS_PROMPT = """
 First, review an example of how to perform this task with the required precision. Then, apply the same logic to the new batch of documents.
 
 --- EXAMPLE ---
+\end{PromptBlock}
 
-**Original User Query:** "آیا خوردن گوشت اسب حلال است و نظر مراجع در مورد کراهت آن چیست؟"
+\noindent\textbf{Original User Query:} \fa{``آیا خوردن گوشت اسب حلال است و نظر مراجع در مورد کراهت آن چیست؟''}
 
+\begin{PromptBlock}
 [Translate: "Is the consumption of horse meat permissible (halal) in Islam, and what is the stance of religious authorities regarding its disliked (makruh) status?"]
 
 **Candidate Evidence Documents (Example):**
+\end{PromptBlock}
 
-[doc_1]: "در اسلام، حیوانات به دسته‌های مختلفی تقسیم می‌شوند. حیوانات حلال‌گوشت مانند گاو و گوسفند، و حیوانات حرام‌گوشت مانند خوک. اسب جزو حیوانات حلال‌گوشت محسوب می‌شود اما در فقه شیعه، خوردن گوشت آن کراهت دارد. این کراهت به معنای حرام بودن نیست، بلکه به معنای آن است که بهتر است از خوردن آن پرهیز شود. بسیاری از مراجع تقلید مانند آیت‌الله سیستانی و آیت‌الله خامنه‌ای بر این کراهت تأکید دارند."
+\noindent\textbf{[doc\_1]:} \fa{``در اسلام، حیوانات به دسته‌های مختلفی تقسیم می‌شوند. حیوانات حلال‌گوشت مانند گاو و گوسفند، و حیوانات حرام‌گوشت مانند خوک. اسب جزو حیوانات حلال‌گوشت محسوب می‌شود اما در فقه شیعه، خوردن گوشت آن کراهت دارد. این کراهت به معنای حرام بودن نیست، بلکه به معنای آن است که بهتر است از خوردن آن پرهیز شود. بسیاری از مراجع تقلید مانند آیت‌الله سیستانی و آیت‌الله خامنه‌ای بر این کراهت تأکید دارند.''}
 
+\begin{PromptBlock}
 [Translate: "In Islam, animals are categorized into different groups. Permissible (halal) animals include cows and sheep, whereas forbidden (haram) animals include pigs. Horses are considered halal; however, in Shia jurisprudence, consuming horse meat is regarded as makruh (disliked). This designation does not render it unlawful (haram) but indicates that it is preferable to abstain from consumption. Many leading religious authorities, such as Ayatollah Sistani and Ayatollah Khamenei, emphasize this prohibition."]
+\end{PromptBlock}
 
-[doc_2]: "اسب‌ها حیوانات نجیبی هستند که از دیرباز در زندگی بشر نقش مهمی داشته‌اند. از این حیوانات برای سوارکاری، حمل و نقل و در جنگ‌ها استفاده می‌شده است. نژادهای مختلفی از اسب مانند اسب عرب و ترکمن وجود دارد."
+\noindent\textbf{[doc\_2]:} \fa{``اسب‌ها حیوانات نجیبی هستند که از دیرباز در زندگی بشر نقش مهمی داشته‌اند. از این حیوانات برای سوارکاری، حمل و نقل و در جنگ‌ها استفاده می‌شده است. نژادهای مختلفی از اسب مانند اسب عرب و ترکمن وجود دارد.''}
 
+\begin{PromptBlock}
 [Translate: "Horses are noble animals that have historically played a significant role in human life. They have been utilized for riding, transportation, and warfare. Various horse breeds exist, such as Arabian and Turkmen horses."]
+\end{PromptBlock}
 
-[doc_3]: "احکام خوردنی‌ها در اسلام بسیار گسترده است. به طور کلی، هر حیوانی که ذبح شرعی نشود، خوردن گوشت آن حرام است. همچنین، برخی از حیوانات دریایی مانند خرچنگ نیز حرام گوشت هستند."
+\noindent\textbf{[doc\_3]:} \fa{``احکام خوردنی‌ها در اسلام بسیار گسترده است. به طور کلی، هر حیوانی که ذبح شرعی نشود، خوردن گوشت آن حرام است. همچنین، برخی از حیوانات دریایی مانند خرچنگ نیز حرام گوشت هستند.''}
 
+\begin{PromptBlock}
 [Translate: "Islamic dietary laws regarding consumables are extensive. Generally, the meat of any animal not slaughtered according to Islamic law is prohibited (haram). Additionally, certain aquatic animals, such as crabs, are considered haram as well."]
 
 **Analysis for Example:**
@@ -1213,17 +1278,29 @@ You will be given:
   * [Warning] You must NEVER issue fatwas (final religious legal rulings - فقهی حکم نهایی) yourself.
     * Do NOT quote personal opinions as fatwa.
     * If the question asks for a "hukm shari" (حکم شرعی), "hukm chiye" (حکم چیه), "aya batileh?" (آیا باطله؟), etc., or implies a request for a definitive religious ruling, you MUST include the following disclaimer in Persian at the beginning or end of your answer, as appropriate:
-  "[هشدار] من مرجع صدور فتوا نیستم. این پاسخ بر اساس منابع و شواهد ارائه‌شده تهیه شده است، اما برای دریافت حکم شرعی دقیق و متناسب با شرایط فردی، لطفاً به مرجع تقلید واجد شرایط خود مراجعه کنید. فتوا رأی فقهی است که فقط از سوی مرجع تقلید یا مجتهد واجد شرایط صادر می‌شود."
+\end{PromptBlock}
+
+\fa{[هشدار] من مرجع صدور فتوا نیستم. این پاسخ بر اساس منابع و شواهد ارائه‌شده تهیه شده است، اما برای دریافت حکم شرعی دقیق و متناسب با شرایط فردی، لطفاً به مرجع تقلید واجد شرایط خود مراجعه کنید. فتوا رأی فقهی است که فقط از سوی مرجع تقلید یا مجتهد واجد شرایط صادر می‌شود.}
+
+\begin{PromptBlock}
 [Translate: "[Warning] I am not an authority authorized to issue fatwas. This response has been prepared based on available sources and evidence; however, for a precise legal ruling tailored to individual circumstances, please consult a qualified religious authority (marja') or competent jurist. A fatwa is a legal opinion that can only be issued by a recognized marja' or a qualified Islamic scholar."]
     * You may explain what different sources or scholars (from the evidence) have said regarding a ruling, but always with the above context and disclaimer if a direct ruling is sought.
 
 5.  **Error Handling & Insufficient Evidence:**
     * If the available evidence contains **almost no direct or substantial information to answer the question, or only very tangential insights** (do not use this warning for missing minor details or if the answer isn't exhaustive), begin your answer with the following Persian phrase:
-  "[هشدار] اطلاعات کاملی برای پاسخ قطعی به این پرسش در شواهد موجود یافت نشد. با این حال، بر اساس شواهد محدود و مرتبط، می‌توان موارد زیر را بیان کرد:"
+\end{PromptBlock}
+
+\fa{[هشدار] اطلاعات کاملی برای پاسخ قطعی به این پرسش در شواهد موجود یافت نشد. با این حال، بر اساس شواهد محدود و مرتبط، می‌توان موارد زیر را بیان کرد:}
+
+\begin{PromptBlock}
 [Translate: "[Warning] Complete information to provide a definitive answer to this question was not found in the available evidence. However, based on the limited and relevant evidence, the following points can be stated:"]
         Then, proceed to provide the best possible answer using the limited evidence.
     * Only if **NONE** of the provided evidence items contain **ANY relevant or usable information** to even partially address the question, respond ONLY with the following Persian phrase:
-  "[هشدار] متاسفانه، شواهد ارائه شده حاوی اطلاعات مرتبطی برای پاسخ به این پرسش نبودند."
+\end{PromptBlock}
+
+\fa{[هشدار] متاسفانه، شواهد ارائه شده حاوی اطلاعات مرتبطی برای پاسخ به این پرسش نبودند.}
+
+\begin{PromptBlock}
 [Translate: "[Warning] Unfortunately, the provided evidence did not contain relevant information to answer this question."]
 
 **Evidence (each item numbered, with Source_URL):**
