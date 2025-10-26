@@ -2,7 +2,7 @@
 # It handles the bibliography using bibtex for multiple citation lists.
 
 # Define TeX Live paths
-$texPath = "C:\texlive\2025\bin\windows"
+$texPath = "C:\texlive\2022\bin\win32"
 $xelatex = "$texPath\xelatex.exe"
 $bibtex = "$texPath\bibtex.exe"
 
