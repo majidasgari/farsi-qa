@@ -800,7 +800,7 @@ This appendix presents the complete prompts that steer each agent in the FAIR-RA
 The initial validation agent uses the following prompt to verify scope and ethics before selecting the appropriate model size for downstream execution.
 
 \begin{PromptBlock}
-VALIDATE_QUERY_SCOPE_AND_ETHICS_PROMPT = """
+PROMPT = """
 
 **Situation:** A user has submitted a question to an Islamic Question Answering System.
 
@@ -891,7 +891,7 @@ Selected Label: """
 This agent decomposes complex questions into focused retrieval targets. The explicit worked example included in the prompt proved critical for consistent behavior across model checkpoints.
 
 \begin{PromptBlock}
-PROCESS_USER_QUERY_PROMPT = """
+PROMPT = """
 
 **Situation:** You are an expert query analyst for an Islamic knowledge Question-Answering system. A user has asked a question that might be complex, comparative, or multi-faceted. Your task is to decompose this question into a set of precise, meaningful, and distinct sub-queries to ensure the retrieval system can find comprehensive and accurate evidence from a database.
 
@@ -1001,7 +1001,7 @@ Optimized Queries: (A list of optimized queries)
 The filtering agent examines batched retrieval results and discards low-value passages while preserving any chunk that might carry useful facts.
 
 \begin{PromptBlock}
-FILTER_IRRELEVANT_DOCUMENTS_PROMPT = """
+PROMPT = """
 
 **Situation:** A batch of candidate evidence documents has been retrieved for a user's query. To generate a precise and focused answer, we must filter out any documents that do not provide substantial, related information.
 
@@ -1086,7 +1086,7 @@ Unhelpful Document IDs:
 The Structured Evidence Assessment (SEA) agent reasons about sufficiency by building an explicit checklist before deciding whether additional retrieval is required.
 
 \begin{PromptBlock}
-SUFFICIENT_EVIDENCE_PROMPT = """
+PROMPT = """
 
 **Role:** You are a Strategic Intelligence Analyst. Your mission is to determine if the provided evidence is sufficient to accurately answer the user's question by following a sequential analysis.
 
@@ -1174,7 +1174,7 @@ Now, perform this task for the following:
 When the SEA agent signals remaining gaps, the query refinement agent generates hyper-focused follow-up searches grounded in previously confirmed facts.
 
 \begin{PromptBlock}
-REFINE_QUERIES_PROMPT = """
+PROMPT = """
 
 **Situation:** An initial analysis of the evidence has confirmed some facts but also identified specific information that is still missing and required to answer the user's original query.
 
@@ -1238,7 +1238,7 @@ Improved Queries:
 The final generator prompt enforces grounding, neutrality, and safe-guard disclaimers while producing the Persian answer delivered to the end user.
 
 \begin{PromptBlock}
-LLM_FINAL_ATTEMPT_PROMPT = """
+PROMPT = """
 
 **Situation:** You are an expert Islamic Knowledge Assistant. The user has asked a question, and after several retrieval and refinement steps, the following numbered evidence items have been gathered. This is the final attempt to answer the question.
 
@@ -1839,7 +1839,7 @@ FARSIQA (Dynamic) & 11{,}863 & 0.246 & $2.92\times10^{-3}$ \\
 For transparency we reproduce the full diagnostic prompt that powers the failure analysis discussed in Section~6.7. The instruction constrains the judge to attribute each failed case to the earliest pipeline error while providing structured reasoning.
 
 \begin{PromptBlock}
-FAILURE_ANALYSIS_PROMPT = """
+PROMPT = """
 
 **ROLE:** You are an expert RAG (Retrieval-Augmented Generation) system diagnostician. Your task is to perform a meticulous root cause analysis on a failed query-answer pair from an advanced, iterative RAG system.
 
